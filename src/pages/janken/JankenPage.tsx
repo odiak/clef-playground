@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+// デモが 2 つ以上になったらデモ一覧へのリンクを復活させる
+// import { Link } from "react-router";
 import { CLEF_MODELS, type ClefModel } from "../../../shared/clef";
 import {
   decideOutcome,
@@ -99,9 +100,11 @@ export function JankenPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-4">
+      {/* デモが 2 つ以上になったら復活させる
       <Link to="/" className="inline-block text-xs font-extrabold text-ink/60 hover:text-cf-orange">
         ← デモ一覧
       </Link>
+      */}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black whitespace-nowrap">表情じゃんけん</h1>

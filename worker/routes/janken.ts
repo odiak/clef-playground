@@ -57,14 +57,17 @@ janken.post(
             type: "noul",
             instructions: "Is a human face clearly visible in the image?",
           },
+          // 悲しい顔は作りにくく、眉に力が入ると怒った顔と判定されがちなので、
+          // 悲しい顔に特有の特徴を挙げて、迷ったら悲しい顔に寄せるよう指示する
           expression: {
             type: "choice",
-            instructions: "Which facial expression is the person making?",
+            instructions:
+              "Which facial expression is the person making? Sad faces are hard to act, so they are often subtle or mixed with tension in the brows. If the face could be either sad or angry, choose sad unless the person is clearly glaring.",
             criteria: {
-              smile: "Smiling or laughing; a happy face",
-              sad: "Sad, frowning, pouting, or about to cry",
-              angry: "Angry, scowling, glaring, or with furrowed brows",
-              neutral: "Neutral, unclear, or none of the above",
+              smile: "Smiling or laughing: raised mouth corners, visible teeth, or cheerful eyes",
+              sad: "Sad: downturned mouth corners, a pouting or trembling lower lip, drooping eyes or eyelids, inner eyebrows raised or slanted, or a crying look. Even a subtle or exaggerated sad face counts",
+              angry: "Angry: clearly glaring eyes with eyebrows pulled down hard into a V shape, plus bared or clenched teeth or tightly pressed lips",
+              neutral: "Neutral or no clear expression",
             },
           },
         },

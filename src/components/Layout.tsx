@@ -1,5 +1,7 @@
 import { Outlet } from "react-router";
 
+const LINK_CLASS = "underline decoration-cf-orange decoration-2 underline-offset-2";
+
 export function Layout() {
   return (
     <div className="flex min-h-dvh flex-col">
@@ -7,16 +9,19 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <footer className="px-4 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center text-xs font-bold text-ink/60">
-        Powered by{" "}
-        <a
-          href="https://developers.cloudflare.com/workers-ai/models/clef/"
-          target="_blank"
-          rel="noreferrer"
-          className="underline decoration-cf-orange decoration-2 underline-offset-2"
-        >
-          Clef on Cloudflare Workers AI
-        </a>
+      <footer className="space-y-1 px-4 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center text-xs font-bold text-ink/60">
+        <p>
+          Powered by{" "}
+          <a href="https://developers.cloudflare.com/workers-ai/models/clef/" target="_blank" rel="noreferrer" className={LINK_CLASS}>
+            Clef on Cloudflare Workers AI
+          </a>
+        </p>
+        <p>
+          Made by{" "}
+          <a href="https://x.com/odiak_" target="_blank" rel="noreferrer" className={LINK_CLASS}>
+            Kaido Iwamoto
+          </a>
+        </p>
       </footer>
     </div>
   );
