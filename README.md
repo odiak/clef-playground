@@ -1,0 +1,35 @@
+# Clef Playground
+
+Cloudflare Workers AI の判断モデル [Clef / Clef flash](https://developers.cloudflare.com/workers-ai/models/clef/) を使ったデモ集。
+
+## デモ
+
+- **表情じゃんけん** (`/janken`): インカメラで撮った表情（笑顔＝パー、悲しい顔＝チョキ、怒った顔＝グー）を Clef が判定し、コンピューターとじゃんけんする
+
+## 構成
+
+- `src/` — フロントエンド（Vite + React + Tailwind CSS）
+- `worker/` — API（Hono）。`worker/lib/clef.ts` に Clef 呼び出しの型と共通処理
+- `shared/` — フロントエンドと Worker で共有する型
+
+静的アセットと API を 1 つの Worker で配信する。`/api/*` だけが Worker のコードに渡る。
+
+## 開発
+
+```bash
+npm install
+npx wrangler login
+npm run dev
+```
+
+Workers AI のバインディングはローカル開発でもリモートの Cloudflare に接続するので、実際に利用料が発生する。
+
+スマホ実機での確認にはカメラのために HTTPS が必要。`cloudflared tunnel --url http://localhost:5173` などで公開するか、デプロイして確認する。
+
+`wrangler.jsonc` を変更したら `npm run cf-typegen` で `worker-configuration.d.ts` を再生成する。
+
+## デプロイ
+
+```bash
+npm run deploy
+```
