@@ -5,6 +5,7 @@ import { CLEF_MODELS, type ClefModel } from "../../../shared/clef";
 import {
   decideOutcome,
   EXPRESSION_TO_HAND,
+  HAND_EXPRESSIONS,
   HANDS,
   type Hand,
   type JudgeResponse,
@@ -142,7 +143,7 @@ export function JankenPage() {
       </div>
 
       <ul className="grid grid-cols-3 gap-2 text-center">
-        {(["smile", "sad", "angry"] as const).map((expression) => {
+        {HAND_EXPRESSIONS.map((expression) => {
           const hand = EXPRESSION_TO_HAND[expression]!;
           return (
             <li key={expression} className="rounded-2xl border-2 border-ink bg-white px-1 py-1">
@@ -254,7 +255,7 @@ export function JankenPage() {
         <Notice>
           {judge.faceProbability < 0.5
             ? "顔がうまく写っていなかったみたい。"
-            : "笑顔・悲しい顔・怒った顔のどれにも見えなかったみたい。"}
+            : "はっきりした表情に見えなかったみたい。笑顔・驚いた顔・怒った顔のどれかで、"}
           もう一度どうぞ！
         </Notice>
       )}

@@ -12,7 +12,7 @@ const DEMOS: Demo[] = [
     path: "/janken",
     emoji: "😄✊",
     title: "表情じゃんけん",
-    description: "笑顔・悲しい顔・怒った顔でコンピューターとじゃんけん。インカメラで撮った表情を Clef が判定します。",
+    description: "笑顔・驚いた顔・怒った顔でコンピューターとじゃんけん。インカメラで撮った表情を Clef が判定します。",
   },
 ];
 

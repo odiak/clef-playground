@@ -14,14 +14,14 @@ export const HAND_LABEL: Record<Hand, string> = {
 
 export const EXPRESSION_EMOJI: Record<Expression, string> = {
   smile: "😄",
-  sad: "😢",
+  surprised: "😲",
   angry: "😠",
   neutral: "😐",
 };
 
 export const EXPRESSION_LABEL: Record<Expression, string> = {
   smile: "笑顔",
-  sad: "悲しい顔",
+  surprised: "驚いた顔",
   angry: "怒った顔",
   neutral: "その他",
 };

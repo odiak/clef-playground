@@ -1,6 +1,8 @@
 import type { ClefModel } from "./clef";
 
-export const EXPRESSIONS = ["smile", "sad", "angry", "neutral"] as const;
+/** 手に対応する表情 */
+export const HAND_EXPRESSIONS = ["smile", "surprised", "angry"] as const;
+export const EXPRESSIONS = [...HAND_EXPRESSIONS, "neutral"] as const;
 export type Expression = (typeof EXPRESSIONS)[number];
 
 export const HANDS = ["rock", "scissors", "paper"] as const;
@@ -9,7 +11,7 @@ export type Hand = (typeof HANDS)[number];
 /** 表情 → 手。neutral は判定不能として扱う */
 export const EXPRESSION_TO_HAND: Record<Expression, Hand | null> = {
   smile: "paper",
-  sad: "scissors",
+  surprised: "scissors",
   angry: "rock",
   neutral: null,
 };

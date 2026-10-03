@@ -20,7 +20,7 @@ export const PAGES: Record<string, PageMeta> = {
   "/janken": {
     title: `表情じゃんけん | ${SITE_NAME}`,
     description:
-      "笑顔・悲しい顔・怒った顔でコンピューターとじゃんけん！インカメラで撮った表情を Cloudflare Workers AI の Clef が判定します。",
+      "笑顔・驚いた顔・怒った顔でコンピューターとじゃんけん！インカメラで撮った表情を Cloudflare Workers AI の Clef が判定します。",
     image: "/ogp/janken.png",
   },
 };

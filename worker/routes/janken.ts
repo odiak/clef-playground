@@ -3,6 +3,8 @@ import { bodyLimit } from "hono/body-limit";
 import { isClefModel } from "../../shared/clef";
 import {
   EXPRESSION_TO_HAND,
+  HAND_EXPRESSIONS,
+  type Expression,
   type JudgeErrorResponse,
   type JudgeResponse,
 } from "../../shared/janken";
@@ -12,6 +14,8 @@ const IMAGE_DATA_URL = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
 
 // 顔が写っていないとみなす閾値
 const FACE_THRESHOLD = 0.5;
+// 「その他」の確率がこれ以上のときだけ、はっきり無表情として判定できずにする
+const NEUTRAL_THRESHOLD = 0.7;
 
 export const janken = new Hono<{ Bindings: Env }>();
 
@@ -57,16 +61,15 @@ janken.post(
             type: "noul",
             instructions: "Is a human face clearly visible in the image?",
           },
-          // 悲しい顔は作りにくく、眉に力が入ると怒った顔と判定されがちなので、
-          // 悲しい顔に特有の特徴を挙げて、迷ったら悲しい顔に寄せるよう指示する
+          // 3 つの表情は、見た目の特徴が互いに重ならないように書き分ける
           expression: {
             type: "choice",
             instructions:
-              "Which facial expression is the person making? Sad faces are hard to act, so they are often subtle or mixed with tension in the brows. If the face could be either sad or angry, choose sad unless the person is clearly glaring.",
+              "Which facial expression is the person making? The expressions are often exaggerated or playful.",
             criteria: {
-              smile: "Smiling or laughing: raised mouth corners, visible teeth, or cheerful eyes",
-              sad: "Sad: downturned mouth corners, a pouting or trembling lower lip, drooping eyes or eyelids, inner eyebrows raised or slanted, or a crying look. Even a subtle or exaggerated sad face counts",
-              angry: "Angry: clearly glaring eyes with eyebrows pulled down hard into a V shape, plus bared or clenched teeth or tightly pressed lips",
+              smile: "Smiling or laughing: mouth corners turned up and cheeks raised, possibly showing teeth",
+              surprised: "Surprised: mouth dropped open in a round 'O' shape, eyebrows raised high, eyes wide open",
+              angry: "Angry: eyebrows pulled down and together, glaring or narrowed eyes, clenched teeth or tightly pressed lips",
               neutral: "Neutral or no clear expression",
             },
           },
@@ -75,16 +78,24 @@ janken.post(
 
       const { face, expression } = response.answers;
       const faceProbability = face.noul;
+
+      // 「その他」がわずかに上回っただけで判定できずにならないよう、
+      // はっきり無表情なとき以外は 3 つの表情の中で一番確率が高いものを採用する
+      const { probabilities } = expression;
+      const decided: Expression =
+        probabilities.neutral >= NEUTRAL_THRESHOLD
+          ? "neutral"
+          : HAND_EXPRESSIONS.reduce((best, e) =>
+              probabilities[e] > probabilities[best] ? e : best,
+            );
       const hand =
-        faceProbability >= FACE_THRESHOLD
-          ? EXPRESSION_TO_HAND[expression.choice]
-          : null;
+        faceProbability >= FACE_THRESHOLD ? EXPRESSION_TO_HAND[decided] : null;
 
       return c.json<JudgeResponse>({
         model,
         latencyMs,
         faceProbability,
-        expression: expression.choice,
+        expression: decided,
         probabilities: expression.probabilities,
         confidence: expression.confidence,
         hand,
