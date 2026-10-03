@@ -197,10 +197,8 @@ export function JankenPage() {
 
         {judge && (
           <>
-            <div className="absolute inset-0 bg-ink/25" />
-            <StageBadge>
-              {EXPRESSION_EMOJI[judge.expression]} {EXPRESSION_LABEL[judge.expression]}
-            </StageBadge>
+            {/* 顔（特に目と口）を隠さないよう、上下だけ暗くしてステッカーは上端に置く */}
+            <div className="absolute inset-0 bg-linear-to-b from-ink/35 via-transparent via-40% to-ink/25" />
             <ResultSticker outcome={outcome} />
           </>
         )}
@@ -210,7 +208,9 @@ export function JankenPage() {
             <HandBubble
               title="あなた"
               highlight={outcome === "win"}
-              sub={judge?.hand ? HAND_LABEL[judge.hand] : undefined}
+              sub={
+                judge?.hand ? `${EXPRESSION_EMOJI[judge.expression]} ${EXPRESSION_LABEL[judge.expression]}` : undefined
+              }
             >
               {phase.kind === "countdown" ? (
                 <span className="opacity-40">❔</span>
@@ -398,10 +398,10 @@ function ResultSticker({ outcome }: { outcome: Outcome | undefined }) {
   const emoji: Record<Outcome, string> = { win: "🎉", draw: "🤝", lose: "😭" };
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[30%] flex justify-center">
+    <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
       <div className="-rotate-6">
         <p
-          className={`animate-pop-in rounded-3xl border-[3px] border-ink px-6 py-2 text-4xl font-black tracking-wider whitespace-nowrap shadow-[0_6px_0_0_var(--color-ink)] ${
+          className={`animate-pop-in rounded-3xl border-[3px] border-ink px-5 py-1.5 text-3xl font-black tracking-wider whitespace-nowrap shadow-[0_5px_0_0_var(--color-ink)] ${
             outcome ? styles[outcome] : "bg-white text-ink"
           }`}
         >
