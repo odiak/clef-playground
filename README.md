@@ -28,6 +28,16 @@ Workers AI のバインディングはローカル開発でもリモートの Cl
 
 `wrangler.jsonc` を変更したら `npm run cf-typegen` で `worker-configuration.d.ts` を再生成する。
 
+## OGP 画像
+
+`ogp/*.html` をヘッドレス Chrome で 1200×630 の PNG にして `public/ogp/` に置いている。ページごとの title と OGP タグは `worker/pages.ts` で `index.html` に差し込む。
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars \
+  --window-size=1200,630 --force-device-scale-factor=1 --virtual-time-budget=8000 \
+  --screenshot="$PWD/public/ogp/janken.png" "file://$PWD/ogp/janken.html"
+```
+
 ## デプロイ
 
 ```bash

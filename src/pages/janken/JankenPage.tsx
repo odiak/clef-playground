@@ -54,6 +54,26 @@ export function JankenPage() {
     };
   }, []);
 
+  // バックグラウンドに回るとカメラの映像が止まることがあるので、カメラを解放する。
+  // 撮影前のゲームは打ち切り、次に始めるときにカメラを起動し直す
+  const phaseKindRef = useRef(phase.kind);
+  useEffect(() => {
+    phaseKindRef.current = phase.kind;
+  }, [phase.kind]);
+  const { stop: stopCamera } = camera;
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "hidden") return;
+      stopCamera();
+      if (phaseKindRef.current === "starting" || phaseKindRef.current === "countdown") {
+        runIdRef.current++;
+        setPhase({ kind: "idle" });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [stopCamera]);
+
   const play = async () => {
     const runId = ++runIdRef.current;
     const isCancelled = () => runId !== runIdRef.current;
@@ -75,7 +95,14 @@ export function JankenPage() {
     if (isCancelled()) return;
 
     // 0 のタイミングで撮影し、コンピューターの手を出す
-    const photo = captureSquareFrame(video);
+    let photo: string;
+    try {
+      photo = captureSquareFrame(video);
+    } catch (error) {
+      camera.stop();
+      setPhase({ kind: "error", message: (error as Error).message });
+      return;
+    }
     const computer = randomHand();
     setPhase({ kind: "judging", photo, computer });
 
@@ -100,6 +127,7 @@ export function JankenPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-4">
+      <title>表情じゃんけん | Clef Playground</title>
       {/* デモが 2 つ以上になったら復活させる
       <Link to="/" className="inline-block text-xs font-extrabold text-ink/60 hover:text-cf-orange">
         ← デモ一覧

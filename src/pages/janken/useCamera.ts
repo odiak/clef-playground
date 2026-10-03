@@ -17,16 +17,33 @@ function toCameraError(error: unknown): CameraError {
   return new CameraError("カメラを起動できませんでした");
 }
 
+function isLive(stream: MediaStream): boolean {
+  return stream.getVideoTracks().some((track) => track.readyState === "live" && track.enabled && !track.muted);
+}
+
 /** インカメラの映像を video 要素に流す */
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [isActive, setIsActive] = useState(false);
 
+  const stop = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setIsActive(false);
+  }, []);
+
   const start = useCallback(async (): Promise<HTMLVideoElement> => {
     const video = videoRef.current;
     if (!video) throw new CameraError("カメラを起動できませんでした");
-    if (streamRef.current?.active) return video;
+
+    // バックグラウンドから戻ったときなどに映像が止まっていることがあるので、生きている場合だけ使い回す
+    if (streamRef.current && isLive(streamRef.current)) {
+      if (video.paused) await video.play();
+      return video;
+    }
+    stop();
 
     if (!window.isSecureContext) {
       throw new CameraError("カメラを使うには HTTPS でページを開いてください");
@@ -50,6 +67,11 @@ export function useCamera() {
     }
 
     streamRef.current = stream;
+    for (const track of stream.getVideoTracks()) {
+      track.addEventListener("ended", () => {
+        if (streamRef.current === stream) stop();
+      });
+    }
     video.srcObject = stream;
     if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
       await new Promise((resolve) => video.addEventListener("loadedmetadata", resolve, { once: true }));
@@ -57,14 +79,9 @@ export function useCamera() {
     await video.play();
     setIsActive(true);
     return video;
-  }, []);
+  }, [stop]);
 
-  useEffect(() => {
-    return () => {
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    };
-  }, []);
+  useEffect(() => stop, [stop]);
 
-  return { videoRef, start, isActive };
+  return { videoRef, start, stop, isActive };
 }

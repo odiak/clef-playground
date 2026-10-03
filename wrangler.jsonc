@@ -6,8 +6,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "assets": {
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    // ページごとの OGP タグを差し込むため、ページの HTML も Worker を通す
+    "run_worker_first": ["/api/*", "/", "/janken"]
   },
   "ai": {
     "binding": "AI",

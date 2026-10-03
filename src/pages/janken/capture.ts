@@ -4,6 +4,7 @@
  */
 export function captureSquareFrame(video: HTMLVideoElement, size = 512): string {
   const { videoWidth: width, videoHeight: height } = video;
+  if (width === 0 || height === 0) throw new Error("カメラの映像を取得できませんでした。もう一度どうぞ");
   const side = Math.min(width, height);
   const sx = (width - side) / 2;
   const sy = (height - side) / 2;
