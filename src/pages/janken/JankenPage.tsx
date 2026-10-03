@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { CLEF_MODELS, type ClefModel } from "../../../shared/clef";
 import {
   decideOutcome,
@@ -26,6 +27,11 @@ const MODEL_LABEL: Record<ClefModel, { name: string; note: string }> = {
   "clef-flash": { name: "Clef flash", note: "9B・はやい" },
   clef: { name: "Clef", note: "27B・かしこい" },
 };
+
+// カウントダウン 1 拍の長さ
+const BEAT_MS = 1000;
+// 「1」のあと撮影までの追加の待ち時間。表情を作る反応時間のぶん、少しだけ遅らせる
+const CAPTURE_DELAY_MS = 400;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -63,7 +69,7 @@ export function JankenPage() {
     for (const count of [3, 2, 1]) {
       if (isCancelled()) return;
       setPhase({ kind: "countdown", count });
-      await sleep(1000);
+      await sleep(count === 1 ? BEAT_MS + CAPTURE_DELAY_MS : BEAT_MS);
     }
     if (isCancelled()) return;
 
@@ -93,6 +99,9 @@ export function JankenPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-4">
+      <Link to="/" className="inline-block text-xs font-extrabold text-ink/60 hover:text-cf-orange">
+        ← デモ一覧
+      </Link>
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black whitespace-nowrap">表情じゃんけん</h1>
@@ -139,19 +148,15 @@ export function JankenPage() {
         )}
 
         {phase.kind === "countdown" && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span
-              key={phase.count}
-              className="animate-count text-[9rem] leading-none font-black text-white [paint-order:stroke_fill] [-webkit-text-stroke:10px_var(--color-ink)]"
-            >
-              {phase.count}
-            </span>
-          </div>
+          <CountNumber key={phase.count} className="animate-count">
+            {phase.count}
+          </CountNumber>
         )}
 
         {phase.kind === "judging" && (
           <>
             <div className="pointer-events-none absolute inset-0 animate-flash bg-white" />
+            <CountNumber className="animate-zero">0</CountNumber>
             <StageBadge>
               <span className="inline-block animate-spin">⏳</span> Clef が判定中…
             </StageBadge>
@@ -223,9 +228,23 @@ export function JankenPage() {
         </Notice>
       )}
 
-      <ModelToggle value={model} onChange={setModel} disabled={isBusy} />
-
-      {judge && <ProbabilityBars judge={judge} />}
+      <details className="group card-pop overflow-hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-3 [&::-webkit-details-marker]:hidden">
+          <span className="text-sm font-black">🔍 モデルと判定の詳細</span>
+          <span className="flex items-center gap-2 text-xs font-bold text-ink/60">
+            {MODEL_LABEL[model].name}
+            <span className="text-cf-orange transition-transform group-open:rotate-180">▼</span>
+          </span>
+        </summary>
+        <div className="space-y-5 border-t-[3px] border-ink px-5 pt-4 pb-5">
+          <ModelToggle value={model} onChange={setModel} disabled={isBusy} />
+          {judge ? (
+            <ProbabilityBars judge={judge} />
+          ) : (
+            <p className="text-center text-xs font-bold text-ink/50">じゃんけんすると、ここに Clef の判定結果が表示されます</p>
+          )}
+        </div>
+      </details>
 
       <p className="text-center text-xs font-bold text-ink/50">
         撮影した写真は判定のためだけに送信され、保存されません。
@@ -279,6 +298,18 @@ function ModelToggle({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function CountNumber({ className, children }: { className: string; children: ReactNode }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <span
+        className={`text-[9rem] leading-none font-black text-white [paint-order:stroke_fill] [-webkit-text-stroke:10px_var(--color-ink)] ${className}`}
+      >
+        {children}
+      </span>
     </div>
   );
 }

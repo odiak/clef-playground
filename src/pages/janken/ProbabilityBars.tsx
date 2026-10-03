@@ -3,7 +3,7 @@ import { EXPRESSION_EMOJI, EXPRESSION_LABEL, HAND_EMOJI } from "./labels";
 
 export function ProbabilityBars({ judge }: { judge: JudgeResponse }) {
   return (
-    <div className="card-pop space-y-4 p-5">
+    <div className="space-y-4">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="font-black">Clef の判定</h3>
         <p className="text-xs font-bold text-ink/60">
