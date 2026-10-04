@@ -1,7 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-// デモが 2 つ以上になったらデモ一覧へのリンクを復活させる
-// import { Link } from "react-router";
-import { CLEF_MODELS, type ClefModel } from "../../../shared/clef";
+import type { ClefModel } from "../../../shared/clef";
 import {
   decideOutcome,
   EXPRESSION_TO_HAND,
@@ -11,11 +9,15 @@ import {
   type JudgeResponse,
   type Outcome,
 } from "../../../shared/janken";
+import { BackLink } from "../../components/BackLink";
+import { DetailsCard } from "../../components/DetailsCard";
+import { MODEL_LABEL, ModelToggle } from "../../components/ModelToggle";
+import { Notice } from "../../components/Notice";
+import { captureSquareFrame } from "../../lib/camera/capture";
+import { useCamera } from "../../lib/camera/useCamera";
 import { judgeExpression } from "./api";
-import { captureSquareFrame } from "./capture";
 import { EXPRESSION_EMOJI, EXPRESSION_LABEL, HAND_EMOJI, HAND_LABEL, OUTCOME_LABEL } from "./labels";
 import { ProbabilityBars } from "./ProbabilityBars";
-import { useCamera } from "./useCamera";
 
 type Phase =
   | { kind: "idle" }
@@ -24,11 +26,6 @@ type Phase =
   | { kind: "judging"; photo: string; computer: Hand }
   | { kind: "result"; photo: string; computer: Hand; judge: JudgeResponse }
   | { kind: "error"; message: string; photo?: string; computer?: Hand };
-
-const MODEL_LABEL: Record<ClefModel, { name: string; note: string }> = {
-  "clef-flash": { name: "Clef flash", note: "9B・はやい" },
-  clef: { name: "Clef", note: "27B・かしこい" },
-};
 
 // カウントダウン 1 拍の長さ
 const BEAT_MS = 1000;
@@ -55,17 +52,14 @@ export function JankenPage() {
     };
   }, []);
 
-  // バックグラウンドに回るとカメラの映像が止まることがあるので、カメラを解放する。
-  // 撮影前のゲームは打ち切り、次に始めるときにカメラを起動し直す
+  // バックグラウンドに回るとカメラは解放されるので（useCamera）、撮影前のゲームは打ち切る
   const phaseKindRef = useRef(phase.kind);
   useEffect(() => {
     phaseKindRef.current = phase.kind;
   }, [phase.kind]);
-  const { stop: stopCamera } = camera;
   useEffect(() => {
     const onVisibilityChange = () => {
       if (document.visibilityState !== "hidden") return;
-      stopCamera();
       if (phaseKindRef.current === "starting" || phaseKindRef.current === "countdown") {
         runIdRef.current++;
         setPhase({ kind: "idle" });
@@ -73,7 +67,7 @@ export function JankenPage() {
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [stopCamera]);
+  }, []);
 
   const play = async () => {
     const runId = ++runIdRef.current;
@@ -129,11 +123,7 @@ export function JankenPage() {
   return (
     <div className="mx-auto max-w-md space-y-4">
       <title>表情じゃんけん | Clef Playground</title>
-      {/* デモが 2 つ以上になったら復活させる
-      <Link to="/" className="inline-block text-xs font-extrabold text-ink/60 hover:text-cf-orange">
-        ← デモ一覧
-      </Link>
-      */}
+      <BackLink />
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black whitespace-nowrap">表情じゃんけん</h1>
@@ -260,23 +250,14 @@ export function JankenPage() {
         </Notice>
       )}
 
-      <details className="group card-pop overflow-hidden">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-3 [&::-webkit-details-marker]:hidden">
-          <span className="text-sm font-black">🔍 モデルと判定の詳細</span>
-          <span className="flex items-center gap-2 text-xs font-bold text-ink/60">
-            {MODEL_LABEL[model].name}
-            <span className="text-cf-orange transition-transform group-open:rotate-180">▼</span>
-          </span>
-        </summary>
-        <div className="space-y-5 border-t-[3px] border-ink px-5 pt-4 pb-5">
-          <ModelToggle value={model} onChange={setModel} disabled={isBusy} />
-          {judge ? (
-            <ProbabilityBars judge={judge} />
-          ) : (
-            <p className="text-center text-xs font-bold text-ink/50">じゃんけんすると、ここに Clef の判定結果が表示されます</p>
-          )}
-        </div>
-      </details>
+      <DetailsCard title="🔍 モデルと判定の詳細" aside={MODEL_LABEL[model].name}>
+        <ModelToggle value={model} onChange={setModel} disabled={isBusy} />
+        {judge ? (
+          <ProbabilityBars judge={judge} />
+        ) : (
+          <p className="text-center text-xs font-bold text-ink/50">じゃんけんすると、ここに Clef の判定結果が表示されます</p>
+        )}
+      </DetailsCard>
 
       <p className="text-center text-xs font-bold text-ink/50">
         撮影した写真は判定のためだけに送信され、保存されません。
@@ -295,42 +276,6 @@ function Scoreboard({ score }: { score: Record<Outcome, number> }) {
         </div>
       ))}
     </dl>
-  );
-}
-
-function ModelToggle({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: ClefModel;
-  onChange: (model: ClefModel) => void;
-  disabled: boolean;
-}) {
-  return (
-    <div role="radiogroup" aria-label="判定に使うモデル" className="grid grid-cols-2 gap-1 rounded-full border-[3px] border-ink bg-white p-1">
-      {CLEF_MODELS.map((model) => {
-        const selected = model === value;
-        return (
-          <button
-            key={model}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            disabled={disabled}
-            onClick={() => onChange(model)}
-            className={`rounded-full px-3 py-1 transition-colors disabled:cursor-not-allowed ${
-              selected ? "bg-cf-orange text-white" : "text-ink/70 hover:bg-cf-cream"
-            }`}
-          >
-            <span className="block text-sm leading-tight font-black">{MODEL_LABEL[model].name}</span>
-            <span className={`block text-[10px] font-bold ${selected ? "text-white/85" : "text-ink/50"}`}>
-              {MODEL_LABEL[model].note}
-            </span>
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -409,11 +354,5 @@ function ResultSticker({ outcome }: { outcome: Outcome | undefined }) {
         </p>
       </div>
     </div>
-  );
-}
-
-function Notice({ children }: { children: ReactNode }) {
-  return (
-    <p className="rounded-3xl border-[3px] border-ink bg-white px-4 py-3 text-center text-sm font-bold">{children}</p>
   );
 }

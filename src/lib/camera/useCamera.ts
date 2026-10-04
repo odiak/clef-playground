@@ -81,7 +81,17 @@ export function useCamera() {
     return video;
   }, [stop]);
 
-  useEffect(() => stop, [stop]);
+  // バックグラウンドに回ると映像が止まることがあるので、カメラを解放する。次に使うときに起動し直す
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") stop();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      stop();
+    };
+  }, [stop]);
 
   return { videoRef, start, stop, isActive };
 }

@@ -35,10 +35,6 @@ export type JudgeResponse = {
   hand: Hand | null;
 };
 
-export type JudgeErrorResponse = {
-  error: string;
-};
-
 export type Outcome = "win" | "lose" | "draw";
 
 const BEATS: Record<Hand, Hand> = {
