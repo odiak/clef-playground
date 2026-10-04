@@ -15,9 +15,10 @@ import { Notice } from "../../components/Notice";
 import { captureSquareFrame } from "../../lib/camera/capture";
 import { useCamera } from "../../lib/camera/useCamera";
 import { analyzeFace } from "./api";
-import { Avatar } from "./Avatar";
+import { Avatar, AVATAR_STYLES, type AvatarStyleId } from "./Avatar";
 import { toAvatarParams } from "./params";
 import { saveSvgAsPng } from "./saveImage";
+import { StylePicker } from "./StylePicker";
 
 type Phase =
   | { kind: "camera" }
@@ -42,10 +43,31 @@ const QUESTION_COUNT = AVATAR_STAGES.reduce((sum, stage) => sum + stage.question
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const STYLE_STORAGE_KEY = "clef-avatar-style";
+
+function loadStyle(): AvatarStyleId {
+  try {
+    const saved = localStorage.getItem(STYLE_STORAGE_KEY);
+    if (AVATAR_STYLES.some((style) => style.id === saved)) return saved as AvatarStyleId;
+  } catch {
+    // ストレージが使えなくても既定のスタイルで動かす
+  }
+  return "pop";
+}
+
 export function AvatarPage() {
   const camera = useCamera();
   const [phase, setPhase] = useState<Phase>({ kind: "camera" });
   const [model, setModel] = useState<ClefModel>("clef");
+  const [styleId, setStyleId] = useState<AvatarStyleId>(loadStyle);
+  const changeStyle = (style: AvatarStyleId) => {
+    setStyleId(style);
+    try {
+      localStorage.setItem(STYLE_STORAGE_KEY, style);
+    } catch {
+      // 保存できなくても選択は反映する
+    }
+  };
   const svgRef = useRef<SVGSVGElement>(null);
 
   const runIdRef = useRef(0);
@@ -115,7 +137,7 @@ export function AvatarPage() {
   const save = async () => {
     if (!svgRef.current) return;
     try {
-      await saveSvgAsPng(svgRef.current, "clef-avatar.png");
+      await saveSvgAsPng(svgRef.current, `clef-avatar-${styleId}.png`);
     } catch {
       window.alert("画像の保存に失敗しました");
     }
@@ -159,7 +181,7 @@ export function AvatarPage() {
         {showAvatar && (
           <div className="absolute inset-0">
             {params ? (
-              <Avatar params={params} stages={stages} svgRef={svgRef} />
+              <Avatar params={params} stages={stages} styleId={styleId} svgRef={svgRef} />
             ) : (
               <div className="flex size-full flex-col items-center justify-center gap-3 bg-cf-cream">
                 <span className="animate-float text-7xl">🤔</span>
@@ -218,6 +240,8 @@ export function AvatarPage() {
       )}
 
       {phase.kind === "building" && <BuildProgress phase={phase} onSkip={skip} />}
+
+      {phase.kind === "done" && params && <StylePicker params={params} value={styleId} onChange={changeStyle} />}
 
       {phase.kind === "done" && (
         <div className="grid grid-cols-2 gap-3 pt-1">
