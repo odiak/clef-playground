@@ -23,6 +23,12 @@ export const PAGES: Record<string, PageMeta> = {
       "笑顔・驚いた顔・怒った顔でコンピューターとじゃんけん！インカメラで撮った表情を Cloudflare Workers AI の Clef が判定します。",
     image: "/ogp/janken.png",
   },
+  "/avatar": {
+    title: `アバターメーカー | ${SITE_NAME}`,
+    description:
+      "顔の写真について Clef が 25 個の質問に答え、その答えからあなたに似たアバターを組み立てます。Cloudflare Workers AI の Clef を使ったデモ。",
+    image: "/ogp/avatar.png",
+  },
 };
 
 function escapeAttribute(value: string): string {

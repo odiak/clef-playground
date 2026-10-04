@@ -1,10 +1,12 @@
 import { Hono } from "hono";
 import { PAGES, renderPage } from "./pages";
+import { avatar } from "./routes/avatar";
 import { janken } from "./routes/janken";
 
 const app = new Hono<{ Bindings: Env }>();
 
 app.route("/api/janken", janken);
+app.route("/api/avatar", avatar);
 
 for (const [path, meta] of Object.entries(PAGES)) {
   app.get(path, (c) => renderPage(c, meta));

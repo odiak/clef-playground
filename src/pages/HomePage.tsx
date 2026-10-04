@@ -14,6 +14,12 @@ const DEMOS: Demo[] = [
     title: "表情じゃんけん",
     description: "笑顔・驚いた顔・怒った顔でコンピューターとじゃんけん。インカメラで撮った表情を Clef が判定します。",
   },
+  {
+    path: "/avatar",
+    emoji: "🧑‍🎨✨",
+    title: "アバターメーカー",
+    description: "顔の写真について Clef が 25 個の質問に答え、その答えからあなたに似たアバターを組み立てます。",
+  },
 ];
 
 export function HomePage() {

@@ -5,6 +5,7 @@ Cloudflare Workers AI の判断モデル [Clef / Clef flash](https://developers.
 ## デモ
 
 - **表情じゃんけん** (`/janken`): インカメラで撮った表情（笑顔＝パー、驚いた顔＝チョキ、怒った顔＝グー）を Clef が判定し、コンピューターとじゃんけんする
+- **アバターメーカー** (`/avatar`): 撮った顔写真について Clef が髪型や目の形など 25 の質問に答え、その答えからアバターを段階的に組み立てる
 
 ## 構成
 
@@ -37,6 +38,8 @@ Workers AI のバインディングはローカル開発でもリモートの Cl
   --window-size=1200,630 --force-device-scale-factor=1 --virtual-time-budget=8000 \
   --screenshot="$PWD/public/ogp/janken.png" "file://$PWD/ogp/janken.html"
 ```
+
+アバターメーカーの `ogp/avatar.html` に埋め込んだアバターの SVG は、アプリで描いたものをそのまま書き出している。
 
 ## デプロイ
 
