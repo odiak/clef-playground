@@ -177,20 +177,24 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
   }
 
   // ── 首と服 ──
-  const neckW = anime ? 15 : comic ? 17 : 16;
-  const neck: Shape = { type: "path", d: spline([[120 - neckW, 144], [120 - neckW + 1.5, 164], [120 - neckW - 4, 190], [120 + neckW + 4, 190], [120 + neckW - 1.5, 164], [120 + neckW, 144]], true) };
+  // あごが下にある顔（面長など）は首が見えなくなるので、あごの位置に合わせて首と服を下げる
+  const bodyDy = Math.max(0, f.chinY - 168);
+  const down = (points: Point[]): Point[] => points.map(([x, y]) => [x, y + bodyDy]);
+  const neckW = comic ? 20 : 18;
+  const neck: Shape = { type: "path", d: spline([[120 - neckW, 144], ...down([[120 - neckW + 1.5, 164], [120 - neckW - 4, 190], [120 + neckW + 4, 190], [120 + neckW - 1.5, 164]]), [120 + neckW, 144]], true) };
   fill("face", "skin", neck, skin);
   // あごの影。輪郭を少し下にずらした形を首の形で切り抜く
-  fill("face", "shadow", spline(facePoints(f, comic ? 9 : 7), true), skinShadow, { strokeWidth: 0, clip: neck });
-  fill("clothes", "clothes", spline([[22, 246], [28, 212], [50, 192], [90, 181], [150, 181], [190, 192], [212, 212], [218, 246]], true), clothes);
-  fill("clothes", "skin", spline([[94, 181], [107, 193], [120, 197], [133, 193], [146, 181]], true), skin, { strokeWidth: 0 });
-  fill("clothes", "shadow", spline([[100, 182], [120, 190], [140, 182], [134, 188], [120, 193], [106, 188]], true), skinShadow, { strokeWidth: 0 });
-  line("clothes", "detail", spline([[93, 181.5], [107, 194], [120, 198.5], [133, 194], [147, 181.5]]), 3.5, { color: clothesLine });
-  line("clothes", "detail", spline([[60, 212], [66, 226], [66, 244]]), 2.2, { color: clothesLine });
-  line("clothes", "detail", spline(mirror([[60, 212], [66, 226], [66, 244]])), 2.2, { color: clothesLine });
+  fill("face", "shadow", spline(facePoints(f, comic ? 5.5 : 4.5), true), skinShadow, { strokeWidth: 0, clip: neck });
+  fill("clothes", "clothes", spline(down([[22, 246], [28, 212], [50, 192], [90, 181], [150, 181], [190, 192], [212, 212], [218, 246]]), true), clothes);
+  // 襟元の肌。服の上端の輪郭線が首を横切らないよう、首の幅の中だけ少し上まで広げる
+  const collar = down([[120 - neckW - 2, 181], [120 - neckW - 0.5, 177], [120 + neckW + 0.5, 177], [120 + neckW + 2, 181]]);
+  fill("clothes", "skin", `${spline(down([[94, 181], [107, 193], [120, 197], [133, 193], [146, 181]]))} ${collar.reverse().map(([x, y]) => `L${x} ${y}`).join(" ")} Z`, skin, { strokeWidth: 0 });
+  line("clothes", "detail", spline(down([[93, 181.5], [107, 194], [120, 198.5], [133, 194], [147, 181.5]])), 3.5, { color: clothesLine });
+  line("clothes", "detail", spline(down([[60, 212], [66, 226], [66, 244]])), 2.2, { color: clothesLine });
+  line("clothes", "detail", spline(down(mirror([[60, 212], [66, 226], [66, 244]]))), 2.2, { color: clothesLine });
   if (comic) {
     // 服の右側の影
-    fill("clothes", "shadow", spline([[150, 182], [190, 194], [212, 214], [218, 246], [160, 246], [156, 214]], true), darken(clothes, 0.25), { strokeWidth: 0 });
+    fill("clothes", "shadow", spline(down([[150, 182], [190, 194], [212, 214], [218, 246], [160, 246], [156, 214]]), true), darken(clothes, 0.25), { strokeWidth: 0 });
   }
 
   // ── 耳とピアス ──

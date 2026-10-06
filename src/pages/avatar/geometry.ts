@@ -201,11 +201,16 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   if (chibi) {
     bodyLayers.add(fill("face", "skin", { type: "rect", x: 100, y: 172, width: 40, height: 26 }, skin));
     bodyLayers.add(fill("clothes", "clothes", path("M50 240 C54 214 76 198 100 195 L140 195 C164 198 186 214 190 240 Z"), CLOTHES[p.clothingColor]));
-    bodyLayers.add(fill("clothes", "skin", path("M100 195 Q120 211 140 195 Z"), skin));
+    // 襟元の肌。上の直線に輪郭線を引くと首を横切る線になるので、塗りと襟ぐりの線を分ける。
+    // 服の上端の輪郭線も隠れるよう、肌を少し上まで広げる
+    bodyLayers.add(fill("clothes", "skin", path("M102 191 L138 191 L140 195 Q120 211 100 195 Z"), skin, { strokeWidth: 0 }));
+    bodyLayers.add(line("clothes", "detail", "M100 195 Q120 211 140 195", 4));
   } else {
     bodyLayers.add(fill("face", "skin", { type: "rect", x: 99, y: 146, width: 42, height: 36 }, skin));
     bodyLayers.add(fill("clothes", "clothes", path("M30 240 C34 202 62 182 99 178 L141 178 C178 182 206 202 210 240 Z"), CLOTHES[p.clothingColor]));
-    bodyLayers.add(fill("clothes", "skin", path("M99 178 Q120 196 141 178 Z"), skin));
+    bodyLayers.add(fill("clothes", "skin", path("M101 174 L139 174 L141 178 Q120 196 99 178 Z"), skin, { strokeWidth: 0 }));
+    // シンプルは輪郭線を描かないので、襟ぐりの線もなし
+    if (!minimal) bodyLayers.add(line("clothes", "detail", "M99 178 Q120 196 141 178", 4));
   }
 
   // 顔の後ろに敷く髪。髪の内側の縁と顔の輪郭の間に、背景が見えるすき間ができないようにする
