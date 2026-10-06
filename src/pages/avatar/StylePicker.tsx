@@ -15,7 +15,7 @@ export function StylePicker({
 }) {
   const stages = useMemo(() => new Set<AvatarStageId>(AVATAR_STAGES.map((stage) => stage.id)), []);
   return (
-    <div role="radiogroup" aria-label="アバターのスタイル" className="grid grid-cols-5 gap-x-1.5 gap-y-2">
+    <div role="radiogroup" aria-label="アバターのスタイル" className="grid grid-cols-6 gap-1.5">
       {AVATAR_STYLES.map((style) => {
         const selected = style.id === value;
         return (

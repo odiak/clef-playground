@@ -75,6 +75,16 @@ export const AVATAR_QUESTIONS = {
       curly: { label: "くせ毛・カール", description: "Curly or coily hair" },
     },
   },
+  hair_volume: {
+    type: "choice",
+    label: "髪のボリュームは？",
+    instructions: "How much volume does the person's hair have?",
+    options: {
+      flat: { label: "ぺたんこ", description: "Flat, sleek hair lying close to the head" },
+      normal: { label: "ふつう", description: "Average volume" },
+      full: { label: "ふんわり", description: "Voluminous, puffy hair" },
+    },
+  },
   bangs: {
     type: "choice",
     label: "前髪は？",
@@ -85,10 +95,37 @@ export const AVATAR_QUESTIONS = {
       side: { label: "横に流す", description: "Side-swept bangs partly covering the forehead" },
     },
   },
-  hair_tied: {
+  hair_parting: {
+    type: "choice",
+    label: "分け目は？",
+    instructions: "Where is the person's hair parted, as seen in the image?",
+    options: {
+      center: { label: "真ん中", description: "Parted in the center" },
+      left: { label: "左寄り", description: "Parted toward the left side of the image" },
+      right: { label: "右寄り", description: "Parted toward the right side of the image" },
+      none: { label: "なし", description: "No visible parting" },
+    },
+  },
+  hair_styled_up: {
     type: "noul",
-    label: "髪を結んでいる？",
-    instructions: "Is the person's hair tied up, for example in a ponytail or a bun?",
+    label: "髪を立てている？",
+    instructions: "Is the person's hair styled upward or spiky, for example with gel or wax?",
+  },
+  hair_updo: {
+    type: "choice",
+    label: "髪のまとめ方は？",
+    instructions: "Is the person's hair tied or put up? If so, how?",
+    options: {
+      none: { label: "下ろしている", description: "Hair is down and loose, or too short to tie" },
+      bun: { label: "お団子", description: "A bun on top or at the back of the head" },
+      ponytail: { label: "ポニーテール", description: "A single ponytail" },
+      twintails: { label: "ツインテール", description: "Two pigtails or twin tails, one on each side" },
+    },
+  },
+  ears_covered: {
+    type: "noul",
+    label: "耳が髪で隠れてる？",
+    instructions: "Are the person's ears covered by hair?",
   },
   brow_thickness: {
     type: "choice",
@@ -221,16 +258,32 @@ export const AVATAR_QUESTIONS = {
       sunglasses: { label: "サングラス", description: "Sunglasses with dark lenses" },
     },
   },
-  facial_hair: {
+  mustache: {
     type: "choice",
-    label: "ひげは？",
-    instructions: "Does the person have facial hair?",
+    label: "口ひげは？",
+    instructions: "Does the person have a mustache? If so, how thick is it?",
     options: {
-      none: { label: "なし", description: "Clean-shaven, no facial hair" },
-      stubble: { label: "うっすら", description: "Light stubble" },
-      mustache: { label: "口ひげ", description: "A mustache only" },
-      beard: { label: "あごひげ", description: "A full beard or a goatee" },
+      none: { label: "なし", description: "No mustache" },
+      thin: { label: "薄め", description: "A thin or sparse mustache" },
+      thick: { label: "濃いめ", description: "A thick, bushy mustache" },
     },
+  },
+  beard: {
+    type: "choice",
+    label: "あごひげは？",
+    instructions: "What kind of beard does the person have?",
+    options: {
+      none: { label: "なし", description: "Clean-shaven chin and jaw" },
+      stubble: { label: "無精ひげ", description: "Light stubble or a five o'clock shadow" },
+      goatee: { label: "あごだけ", description: "A goatee or hair only on the chin" },
+      short: { label: "短め", description: "A short, trimmed beard along the jaw" },
+      full: { label: "フル", description: "A full, thick beard" },
+    },
+  },
+  sideburns: {
+    type: "noul",
+    label: "もみあげが長い？",
+    instructions: "Does the person have long or prominent sideburns?",
   },
   earrings: {
     type: "noul",
@@ -257,12 +310,14 @@ export type OptionId<K extends AvatarQuestionId> = Question<K> extends { options
 export const AVATAR_STAGES = [
   { id: "face", label: "輪郭", questions: ["face_shape", "skin_tone"] },
   { id: "clothes", label: "服", questions: ["clothing_color"] },
-  { id: "hair", label: "髪", questions: ["hair_length", "hair_color", "hair_texture", "bangs", "hair_tied"] },
+  { id: "hair", label: "髪", questions: ["hair_length", "hair_color", "hair_texture", "hair_volume"] },
+  { id: "hairstyle", label: "髪型", questions: ["bangs", "hair_parting", "hair_styled_up", "hair_updo", "ears_covered"] },
   { id: "brows", label: "眉", questions: ["brow_thickness", "brow_shape"] },
   { id: "eyes", label: "目", questions: ["monolid", "eye_size", "eye_slant", "eye_color", "long_lashes"] },
   { id: "mouth", label: "鼻と口", questions: ["nose_size", "lip_thickness", "smiling", "mouth_open"] },
   { id: "cheeks", label: "ほっぺ", questions: ["rosy_cheeks", "freckles"] },
-  { id: "extras", label: "小物・ひげ", questions: ["glasses", "facial_hair", "earrings", "hat"] },
+  { id: "beard", label: "ひげ", questions: ["mustache", "beard", "sideburns"] },
+  { id: "extras", label: "小物", questions: ["glasses", "earrings", "hat"] },
 ] as const satisfies readonly { id: string; label: string; questions: readonly AvatarQuestionId[] }[];
 
 export type AvatarStageId = (typeof AVATAR_STAGES)[number]["id"];

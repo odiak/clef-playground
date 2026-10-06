@@ -26,7 +26,7 @@ export const PAGES: Record<string, PageMeta> = {
   "/avatar": {
     title: `アバターメーカー | ${SITE_NAME}`,
     description:
-      "顔の写真について Clef が 25 個の質問に答え、その答えからあなたに似たアバターを組み立てます。Cloudflare Workers AI の Clef を使ったデモ。",
+      "顔の写真について Clef が 31 個の質問に答え、その答えからあなたに似たアバターを組み立てます。Cloudflare Workers AI の Clef を使ったデモ。",
     image: "/ogp/avatar.png",
   },
 };

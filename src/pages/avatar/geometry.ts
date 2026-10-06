@@ -112,44 +112,38 @@ const circle = (cx: number, cy: number, r: number): Shape => ({ type: "circle", 
 const ellipse = (cx: number, cy: number, rx: number, ry: number): Shape => ({ type: "ellipse", cx, cy, rx, ry });
 
 /** パーツの形のバリエーション */
-export type GeometryVariant = "standard" | "anime" | "chibi" | "minimal" | "curvy";
+export type GeometryVariant = "standard" | "chibi" | "minimal" | "curvy" | "anime" | "comic";
 
-// イラスト（アニメ風）の輪郭。あごを細くとがらせる
-const ANIME_HEAD: Record<OptionId<"face_shape">, { halfWidth: number; shape: Shape }> = {
-  round: {
-    halfWidth: 52,
-    shape: path("M120 54 C152 54 172 76 172 106 C172 136 158 156 140 166 Q130 172 120 172 Q110 172 100 166 C82 156 68 136 68 106 C68 76 88 54 120 54 Z"),
-  },
-  oval: {
-    halfWidth: 48,
-    shape: path("M120 54 C150 54 168 76 168 104 C168 132 156 152 138 166 Q128 174 120 174 Q112 174 102 166 C84 152 72 132 72 104 C72 76 90 54 120 54 Z"),
-  },
-  square: {
-    halfWidth: 52,
-    shape: path("M120 54 C154 54 172 70 172 100 L170 132 C168 152 150 166 132 170 Q120 174 108 170 C90 166 72 152 70 132 L68 100 C68 70 86 54 120 54 Z"),
-  },
-  long: {
-    halfWidth: 44,
-    shape: path("M120 50 C148 50 164 74 164 104 C164 136 152 158 136 170 Q128 178 120 178 Q112 178 104 170 C88 158 76 136 76 104 C76 74 92 50 120 50 Z"),
-  },
+// 立てた髪（ツンツン頭）
+const SPIKY = "M64 118 C60 82 64 60 76 46 L80 22 L94 38 L104 12 L116 32 L128 10 L138 32 L152 16 L156 42 C170 54 180 82 176 118 C172 92 154 64 120 64 C86 64 68 92 64 118 Z";
+// まとめ髪
+const PONYTAIL = "M156 50 C194 56 206 108 190 156 C186 136 180 112 166 90 Z";
+const TWINTAIL = "M68 72 C32 80 26 140 42 180 C50 152 58 122 74 96 Z";
+// 耳にかかる短い横髪
+const SIDE_LOCK = "M64 100 C60 116 62 128 70 136 L78 132 C74 120 74 110 76 100 Z";
+
+const MUSTACHE: Record<"thin" | "thick", { d: string; strokeWidth: number }> = {
+  thin: { d: "M108 138 C114 134 118 135 120 137 C122 135 126 134 132 138 C126 139.5 122 139 120 138.5 C118 139 114 139.5 108 138 Z", strokeWidth: 1.5 },
+  thick: { d: "M102 138 C108 129 116 131 120 135 C124 131 132 129 138 138 C131 143 124 141 120 139 C116 141 109 143 102 138 Z", strokeWidth: 2 },
 };
-
-// イラスト（アニメ風）の毛束の前髪
-const ANIME_CAP_EDGE: Record<OptionId<"bangs">, string> = {
-  none: " C172 96 160 76 140 68 L128 74 L120 64 L112 74 L100 68 C80 76 68 96 64 118 Z",
-  full: " C176 104 170 94 162 92 L156 100 L150 86 L142 98 L134 84 L126 98 L118 84 L110 98 L102 86 L94 98 L88 88 L80 100 C72 98 66 106 64 118 Z",
-  side: " C174 98 166 78 148 72 C128 72 104 82 88 102 L86 92 C76 100 68 108 64 118 Z",
+const BEARD = {
+  goatee: "M108 152 Q120 149 132 152 Q133 166 120 172 Q107 166 108 152 Z",
+  short: "M80 128 C82 158 102 172 120 172 C138 172 158 158 160 128 C154 148 140 156 120 156 C100 156 86 148 80 128 Z",
+  full: "M76 122 C78 160 100 176 120 176 C140 176 162 160 164 122 C156 150 140 158 120 158 C100 158 84 150 76 122 Z",
 };
 
 /** パラメーターから、奥から順に描くパーツの一覧を作る */
 export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standard"): Layer[] {
-  if (variant === "curvy") return buildCurvyLayers(p);
+  if (variant === "curvy" || variant === "anime" || variant === "comic") return buildCurvyLayers(p, variant);
   const layers: Layer[] = [];
   // 首と服のパーツ。ちびキャラでは頭だけを大きくするので区別する
   const bodyLayers = new Set<Layer>();
+  // 髪のパーツ。髪のボリュームに合わせて大きさを変える
+  const hairLayers = new Set<Layer>();
   const add = (stage: AvatarStageId, part: Part, shape: Shape, options: Partial<Layer> & { filled: boolean }) => {
     const layer: Layer = { stage, part, shape, strokeWidth: 4, ...options };
     layers.push(layer);
+    if (part === "hair" || part === "hairLine") hairLayers.add(layer);
     return layer;
   };
   const fill = (stage: AvatarStageId, part: Part, shape: Shape, color: string, options: Partial<Layer> = {}) =>
@@ -157,30 +151,33 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   const line = (stage: AvatarStageId, part: Part, d: string, strokeWidth: number, options: Partial<Layer> = {}) =>
     add(stage, part, path(d), { filled: false, strokeWidth, ...options });
 
-  const anime = variant === "anime";
   const chibi = variant === "chibi";
   const minimal = variant === "minimal";
 
   const skin = SKIN[p.skinTone];
-  const skinShadow = darken(skin, 0.13);
   const hair = HAIR[p.hairColor];
   // 眉やひげの色。髪がない人や、髪を派手な色に染めている人はこげ茶にする
   const bodyHair = p.hairLength === "bald" || p.hairColor === "colorful" ? HAIR.dark_brown : hair;
-  const head = anime ? ANIME_HEAD[p.faceShape] : HEAD[p.faceShape];
+  const head = HEAD[p.faceShape];
   const hasLongHair = p.hairLength === "medium" || p.hairLength === "long";
-  const bun = p.hairTied && hasLongHair && p.hat === "none";
-  const hairBack = hasLongHair && !p.hairTied ? (p.hairLength as "medium" | "long") : null;
+  const updo = hasLongHair ? p.hairUpdo : "none";
+  const hairBack = hasLongHair && updo === "none" ? (p.hairLength as "medium" | "long") : null;
+  const spiky = p.hairStyledUp && (p.hairLength === "short" || p.hairLength === "medium") && updo === "none";
   const eyeY = chibi ? 116 : minimal ? 114 : EYE_Y;
 
-  // 後ろ髪（イラストでは奥にあるぶん少し暗くする）
-  const backHair = anime ? darken(hair, 0.15) : hair;
-  if (bun) fill("hair", "hair", circle(120, 30, 17), backHair);
-  if (hairBack) {
-    fill("hair", "hair", path(HAIR_BACK[hairBack]), backHair);
+  // まとめ髪と後ろ髪
+  if (updo === "bun" && p.hat === "none") fill("hairstyle", "hair", circle(120, 30, 17), hair);
+  if (updo === "ponytail") fill("hairstyle", "hair", path(PONYTAIL), hair);
+  if (updo === "twintails") {
+    fill("hairstyle", "hair", path(TWINTAIL), hair);
+    fill("hairstyle", "hair", path(TWINTAIL), hair, { transform: "matrix(-1 0 0 1 240 0)" });
+  }
+  if (hairBack && !spiky) {
+    fill("hair", "hair", path(HAIR_BACK[hairBack]), hair);
     if (p.hairTexture === "curly") {
       for (const y of [100, 130, 160, ...(hairBack === "long" ? [190] : [])]) {
-        fill("hair", "hair", circle(62, y, 13), backHair);
-        fill("hair", "hair", circle(178, y, 13), backHair);
+        fill("hair", "hair", circle(62, y, 13), hair);
+        fill("hair", "hair", circle(178, y, 13), hair);
       }
     }
   }
@@ -191,11 +188,7 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
     bodyLayers.add(fill("clothes", "clothes", path("M50 240 C54 214 76 198 100 195 L140 195 C164 198 186 214 190 240 Z"), CLOTHES[p.clothingColor]));
     bodyLayers.add(fill("clothes", "skin", path("M100 195 Q120 211 140 195 Z"), skin));
   } else {
-    const neckX = anime ? 101 : 99;
-    const neckWidth = 240 - neckX * 2;
-    bodyLayers.add(fill("face", "skin", { type: "rect", x: neckX, y: 146, width: neckWidth, height: 36 }, skin));
-    // イラストではあごの下に影を入れる（上は顔で隠れる）
-    if (anime) bodyLayers.add(fill("face", "shadow", { type: "rect", x: neckX, y: 146, width: neckWidth, height: 30 }, skinShadow, { strokeWidth: 0 }));
+    bodyLayers.add(fill("face", "skin", { type: "rect", x: 99, y: 146, width: 42, height: 36 }, skin));
     bodyLayers.add(fill("clothes", "clothes", path("M30 240 C34 202 62 182 99 178 L141 178 C178 182 206 202 210 240 Z"), CLOTHES[p.clothingColor]));
     bodyLayers.add(fill("clothes", "skin", path("M99 178 Q120 196 141 178 Z"), skin));
   }
@@ -208,8 +201,22 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
     fill("extras", "earring", circle(120 + head.halfWidth + 3, 131, 4), GOLD, { strokeWidth: 2 });
   }
 
-  // 顔の横に垂れる髪
-  if (hairBack) for (const d of FRONT_LOCKS[hairBack]) fill("hair", "hair", path(d), hair);
+  // 耳にかかる横髪
+  if (p.earsCovered && !spiky) {
+    if (hairBack) for (const d of FRONT_LOCKS[hairBack]) fill("hairstyle", "hair", path(d), hair);
+    else if (p.hairLength === "short") {
+      fill("hairstyle", "hair", path(SIDE_LOCK), hair);
+      fill("hairstyle", "hair", path(SIDE_LOCK), hair, { transform: "matrix(-1 0 0 1 240 0)" });
+    }
+  }
+
+  // もみあげ
+  if (p.sideburns && p.hairLength !== "bald") {
+    for (const s of [-1, 1]) {
+      const x = 120 + s * (head.halfWidth - 1);
+      fill("beard", "facialHair", path(`M${x} 98 L${x - s * 8} 100 L${x - s * 9} 126 Q${x - s * 5} 131 ${x - s * 1} 126 Z`), bodyHair, { strokeWidth: 2.5 });
+    }
+  }
 
   // 顔
   fill("face", "skin", head.shape, skin);
@@ -234,44 +241,45 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
     }
   }
 
-  // 前髪
+  // 頭の髪と前髪
   if (p.hairLength === "bald") {
     line("hair", "shine", "M96 66 Q108 58 122 60", 4, { color: WHITE, opacity: 0.7 });
   } else if (p.hairLength === "buzz") {
     fill("hair", "hair", path(BUZZ), hair, { fillOpacity: 0.9 });
+  } else if (spiky) {
+    fill("hairstyle", "hair", path(SPIKY), hair);
   } else {
-    const cap = HAIR_CAP_TOP + (anime ? ANIME_CAP_EDGE : HAIR_CAP_EDGE)[p.bangs];
-    // イラストでは前髪の影を顔に落とす。顔からはみ出さないように顔の形で切り抜く
-    if (anime) fill("hair", "shadow", path(cap), skinShadow, { strokeWidth: 0, transform: "translate(0 6)", clip: head.shape });
     if (p.hairTexture === "curly") {
       for (const deg of [200, 222, 245, 270, 295, 318, 340]) {
         const rad = (deg * Math.PI) / 180;
         fill("hair", "hair", circle(120 + 58 * Math.cos(rad), 104 + 66 * Math.sin(rad), 13), hair);
       }
     }
-    fill("hair", "hair", path(cap), hair);
-    if (anime) {
-      line("hair", "hairHighlight", "M86 54 Q102 44 118 44", 4, { color: WHITE, opacity: 0.5 });
-      line("hair", "hairHighlight", "M130 44 Q146 46 154 54", 4, { color: WHITE, opacity: 0.5 });
-    } else if (p.hairTexture === "wavy") {
+    fill("hair", "hair", path(HAIR_CAP_TOP + HAIR_CAP_EDGE.none), hair);
+    // 流した前髪は、分け目が右寄りなら左右を反転する
+    if (p.bangs !== "none") {
+      fill("hairstyle", "hair", path(HAIR_CAP_TOP + HAIR_CAP_EDGE[p.bangs]), hair, {
+        transform: p.bangs === "side" && p.hairParting === "right" ? "matrix(-1 0 0 1 240 0)" : undefined,
+      });
+    } else if (p.hairParting !== "none") {
+      const x = { center: 120, left: 100, right: 140 }[p.hairParting];
+      line("hairstyle", "hairLine", `M${x} 38 Q${x - 2} 50 ${x} 64`, 2.5, { opacity: 0.5 });
+    }
+    if (p.hairTexture === "wavy") {
       line("hair", "hairLine", "M84 52 q8 6 16 0 t16 0", 2.5, { opacity: 0.35 });
       line("hair", "hairLine", "M122 46 q8 6 16 0 t16 0", 2.5, { opacity: 0.35 });
     }
   }
 
   // 眉
-  const brows = anime
+  const brows = chibi
     ? p.browShape === "arched"
-      ? ["M87 93 Q98 86 109 90", "M131 90 Q142 86 153 93"]
-      : ["M88 91 L108 89", "M132 89 L152 91"]
-    : chibi
-      ? p.browShape === "arched"
-        ? ["M90 99 Q97 94 104 97", "M136 97 Q143 94 150 99"]
-        : ["M90 98 L104 97", "M136 97 L150 98"]
-      : p.browShape === "arched"
-        ? ["M86 98 Q98 88 110 95", "M130 95 Q142 88 154 98"]
-        : ["M87 96 L109 94", "M131 94 L153 96"];
-  const browScale = anime ? 0.6 : chibi || minimal ? 0.75 : 1;
+      ? ["M90 99 Q97 94 104 97", "M136 97 Q143 94 150 99"]
+      : ["M90 98 L104 97", "M136 97 L150 98"]
+    : p.browShape === "arched"
+      ? ["M86 98 Q98 88 110 95", "M130 95 Q142 88 154 98"]
+      : ["M87 96 L109 94", "M131 94 L153 96"];
+  const browScale = chibi || minimal ? 0.75 : 1;
   for (const d of brows) line("brows", "brow", d, BROW_WIDTH[p.browThickness] * browScale, { color: bodyHair });
 
   // 目
@@ -279,36 +287,13 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
     [LEFT_EYE, -1],
     [RIGHT_EYE, 1],
   ] as const) {
-    const transform = `rotate(${EYE_SLANT[p.eyeSlant] * side * (anime ? 0.8 : 1)} ${cx} ${eyeY})`;
+    const transform = `rotate(${EYE_SLANT[p.eyeSlant] * side} ${cx} ${eyeY})`;
     if (minimal) {
       // 二重は点の目、一重は線の目
       if (p.monolid) line("eyes", "eyeLine", `M${cx - 5} ${eyeY} L${cx + 5} ${eyeY}`, 3.5, { transform });
       else fill("eyes", "pupil", circle(cx, eyeY, EYE_SIZE[p.eyeSize] * 0.65), INK, { strokeWidth: 0 });
       continue;
     }
-    if (anime) {
-      const rx = EYE_SIZE[p.eyeSize] * 1.25;
-      const ry = rx * (p.monolid ? 1.1 : 1.35);
-      const iris = IRIS[p.eyeColor];
-      const outer = cx + side * rx * 1.15;
-      const inner = cx - side * rx * 1.05;
-      fill("eyes", "iris", ellipse(cx, eyeY, rx, ry), iris, { strokeWidth: 1.5, transform });
-      fill("eyes", "shadow", ellipse(cx, eyeY - ry * 0.35, rx * 0.92, ry * 0.6), darken(iris, 0.35), { strokeWidth: 0, opacity: 0.6, transform });
-      fill("eyes", "pupil", ellipse(cx, eyeY + ry * 0.1, rx * 0.45, ry * 0.45), darken(iris, 0.6), { strokeWidth: 0, transform });
-      fill("eyes", "highlight", circle(cx + rx * 0.35, eyeY - ry * 0.35, rx * 0.34), WHITE, { strokeWidth: 0, transform });
-      fill("eyes", "highlight", circle(cx - rx * 0.35, eyeY + ry * 0.42, rx * 0.16), WHITE, { strokeWidth: 0, transform });
-      // 上まつげの太い線
-      line("eyes", "lash", `M${inner} ${eyeY - ry * 0.55} Q${cx} ${eyeY - ry * 1.35} ${outer} ${eyeY - ry * 0.4}`, 3.4, { transform });
-      if (!p.monolid) {
-        line("eyes", "eyeLine", `M${cx - rx} ${eyeY - ry * 1.2} Q${cx} ${eyeY - ry * 1.55} ${cx + rx} ${eyeY - ry * 1.2}`, 1.5, { transform });
-      }
-      if (p.longLashes) {
-        line("eyes", "lash", `M${outer} ${eyeY - ry * 0.4} l${side * 5} -3`, 2.5, { transform });
-        line("eyes", "lash", `M${cx + side * rx * 0.6} ${eyeY - ry * 0.95} l${side * 3} -5`, 2, { transform });
-      }
-      continue;
-    }
-
     const rx = EYE_SIZE[p.eyeSize] * (chibi ? 1.35 : 1);
     const ry = p.monolid ? rx * (chibi ? 0.95 : 0.8) : rx * (chibi ? 1.15 : 1.1);
     fill("eyes", "iris", ellipse(cx, eyeY, rx, ry), IRIS[p.eyeColor], { strokeWidth: 2.5, transform });
@@ -327,20 +312,20 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   }
 
   // 鼻
-  if (anime) line("mouth", "nose", "M121 124 l-2 4", 2, { color: darken(skin, 0.35) });
-  else if (chibi) fill("mouth", "nose", circle(120, 128, 1.6), darken(skin, 0.35), { strokeWidth: 0 });
+  if (chibi) fill("mouth", "nose", circle(120, 128, 1.6), darken(skin, 0.35), { strokeWidth: 0 });
   else if (!minimal) line("mouth", "nose", NOSE[p.noseSize], 3);
 
-  // ひげ
-  const mustache = path("M104 137 C110 131 116 133 120 136 C124 133 130 131 136 137 C130 141 124 140 120 138 C116 140 110 141 104 137 Z");
-  const jaw = path("M76 122 C78 160 100 174 120 174 C140 174 162 160 164 122 C156 150 140 158 120 158 C100 158 84 150 76 122 Z");
-  if (p.facialHair === "stubble") fill("extras", "stubble", jaw, bodyHair, { strokeWidth: 0, fillOpacity: 0.28, clip: anime ? head.shape : undefined });
-  if (p.facialHair === "beard") fill("extras", "facialHair", jaw, bodyHair, { strokeWidth: 3 });
-  if (p.facialHair === "mustache" || p.facialHair === "beard") fill("extras", "facialHair", mustache, bodyHair, { strokeWidth: 2 });
+  // あごひげと口ひげ
+  if (p.beard === "stubble") fill("beard", "stubble", path(BEARD.full), bodyHair, { strokeWidth: 0, fillOpacity: 0.28 });
+  else if (p.beard !== "none") fill("beard", "facialHair", path(BEARD[p.beard]), bodyHair, { strokeWidth: 3 });
+  if (p.mustache !== "none") {
+    const { d, strokeWidth } = MUSTACHE[p.mustache];
+    fill("beard", "facialHair", path(d), bodyHair, { strokeWidth });
+  }
 
   // 口
-  if (anime || chibi) {
-    const y = anime ? 145 : 138;
+  if (chibi) {
+    const y = 138;
     if (p.mouthOpen && p.smiling) {
       fill("mouth", "mouthInside", path(`M111 ${y - 4} Q120 ${y + 9} 129 ${y - 4} Z`), MOUTH_INSIDE, { strokeWidth: 2.5 });
       fill("mouth", "lip", ellipse(120, y + 1.5, 4.5, 2.5), LIP, { strokeWidth: 0 });
@@ -393,12 +378,19 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
     fill("extras", "hatShade", { type: "rect", x: 58, y: 88, width: 124, height: 18, rx: 9 }, "#f38020");
   }
 
+  // 髪のボリュームに合わせて、髪のパーツを少し縮めたり膨らませたりする
+  const volume = { flat: "translate(120 100) scale(0.95 0.97) translate(-120 -100)", normal: null, full: "translate(120 100) scale(1.08 1.06) translate(-120 -100)" }[
+    p.hairVolume
+  ];
   // ちびキャラは頭を大きくする
-  if (chibi) {
-    const scale = "translate(120 104) scale(1.16) translate(-120 -104)";
-    for (const layer of layers) {
-      if (!bodyLayers.has(layer)) layer.transform = layer.transform ? `${scale} ${layer.transform}` : scale;
-    }
+  const chibiScale = chibi ? "translate(120 104) scale(1.16) translate(-120 -104)" : null;
+  for (const layer of layers) {
+    const transforms = [
+      !bodyLayers.has(layer) ? chibiScale : null,
+      hairLayers.has(layer) ? volume : null,
+      layer.transform ?? null,
+    ].filter(Boolean);
+    layer.transform = transforms.length ? transforms.join(" ") : undefined;
   }
 
   return layers;

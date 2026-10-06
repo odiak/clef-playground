@@ -18,7 +18,7 @@ const DEMOS: Demo[] = [
     path: "/avatar",
     emoji: "🧑‍🎨✨",
     title: "アバターメーカー",
-    description: "顔の写真について Clef が 25 個の質問に答え、その答えからあなたに似たアバターを組み立てます。",
+    description: "顔の写真について Clef が 31 個の質問に答え、その答えからあなたに似たアバターを組み立てます。",
   },
 ];
 

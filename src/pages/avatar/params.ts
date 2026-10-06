@@ -7,8 +7,12 @@ export type AvatarParams = {
   hairLength: OptionId<"hair_length">;
   hairColor: OptionId<"hair_color">;
   hairTexture: OptionId<"hair_texture">;
+  hairVolume: OptionId<"hair_volume">;
   bangs: OptionId<"bangs">;
-  hairTied: boolean;
+  hairParting: OptionId<"hair_parting">;
+  hairStyledUp: boolean;
+  hairUpdo: OptionId<"hair_updo">;
+  earsCovered: boolean;
   browThickness: OptionId<"brow_thickness">;
   browShape: OptionId<"brow_shape">;
   monolid: boolean;
@@ -24,7 +28,9 @@ export type AvatarParams = {
   freckles: boolean;
   clothingColor: OptionId<"clothing_color">;
   glasses: OptionId<"glasses">;
-  facialHair: OptionId<"facial_hair">;
+  mustache: OptionId<"mustache">;
+  beard: OptionId<"beard">;
+  sideburns: boolean;
   earrings: boolean;
   hat: OptionId<"hat">;
 };
@@ -38,8 +44,12 @@ export function toAvatarParams(answers: AvatarAnswers): AvatarParams {
     hairLength: answers.hair_length.choice,
     hairColor: answers.hair_color.choice,
     hairTexture: answers.hair_texture.choice,
+    hairVolume: answers.hair_volume.choice,
     bangs: answers.bangs.choice,
-    hairTied: yes(answers.hair_tied),
+    hairParting: answers.hair_parting.choice,
+    hairStyledUp: yes(answers.hair_styled_up),
+    hairUpdo: answers.hair_updo.choice,
+    earsCovered: yes(answers.ears_covered),
     browThickness: answers.brow_thickness.choice,
     browShape: answers.brow_shape.choice,
     monolid: yes(answers.monolid),
@@ -55,7 +65,9 @@ export function toAvatarParams(answers: AvatarAnswers): AvatarParams {
     freckles: yes(answers.freckles),
     clothingColor: answers.clothing_color.choice,
     glasses: answers.glasses.choice,
-    facialHair: answers.facial_hair.choice,
+    mustache: answers.mustache.choice,
+    beard: answers.beard.choice,
+    sideburns: yes(answers.sideburns),
     earrings: yes(answers.earrings),
     hat: answers.hat.choice,
   };
