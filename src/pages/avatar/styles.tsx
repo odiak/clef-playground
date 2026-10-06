@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { darken, luminance, mix } from "./color";
+import { colorDistance, darken, luminance, mix } from "./color";
 import { spline } from "./curves";
 import { type GeometryVariant, INK, type Layer, WHITE } from "./geometry";
 
@@ -92,16 +92,24 @@ const chibiStyle: VectorStyle = {
       : linePaint(layer, layer.color === WHITE ? WHITE : layer.color ?? CHIBI_LINE, layer.strokeWidth * 0.9),
 };
 
+/**
+ * 服の色を白で薄めた背景色。白っぽい服だと背景が真っ白になるので、そのときはサイトのオレンジ系にする。
+ * 輪郭線のないスタイルでは、背景が肌の色に近いと髪のない頭が背景に溶け込むので、肌の色と離れるまで濃さを変える
+ */
+function backdropColor(layers: Layer[], whiteness: number): string {
+  const clothes = layers.find((layer) => layer.part === "clothes")?.color ?? "#f38020";
+  const base = luminance(clothes) > 0.8 ? "#f38020" : clothes;
+  const skin = layers.find((layer) => layer.part === "skin")?.color;
+  const candidates = [0, -0.12, -0.24, -0.36, 0.12].map((dt) => mix(base, "#ffffff", Math.min(0.95, whiteness + dt)));
+  if (!skin) return candidates[0];
+  return candidates.find((color) => colorDistance(color, skin) >= 60) ?? candidates.reduce((a, b) => (colorDistance(a, skin) >= colorDistance(b, skin) ? a : b));
+}
+
 /** 点の目と輪郭線なしのフラットな塗り。背景は服の色に合わせる */
 const minimalStyle: VectorStyle = {
   variant: "minimal",
   placeholder: "#3b3540",
-  background: (_, layers) => {
-    const clothes = layers.find((layer) => layer.part === "clothes")?.color ?? "#f38020";
-    // 白っぽい服だと背景が真っ白になるので、そのときはサイトのオレンジ系にする
-    const base = luminance(clothes) > 0.8 ? "#f38020" : clothes;
-    return <rect width={240} height={240} fill={mix(base, "#ffffff", 0.78)} />;
-  },
+  background: (_, layers) => <rect width={240} height={240} fill={backdropColor(layers, 0.78)} />,
   paint: (layer) =>
     layer.filled
       ? {
@@ -129,16 +137,12 @@ const FLAT_LINE = "#3b2b2b";
 const flatStyle: VectorStyle = {
   variant: "curvy",
   placeholder: FLAT_LINE,
-  background: (_, layers) => {
-    const clothes = layers.find((layer) => layer.part === "clothes")?.color ?? "#f38020";
-    const base = luminance(clothes) > 0.8 ? "#f38020" : clothes;
-    return (
-      <>
-        <rect width={240} height={240} fill="#fbf7f1" />
-        <path d={BLOB} fill={mix(base, "#ffffff", 0.72)} />
-      </>
-    );
-  },
+  background: (_, layers) => (
+    <>
+      <rect width={240} height={240} fill="#fbf7f1" />
+      <path d={BLOB} fill={backdropColor(layers, 0.72)} />
+    </>
+  ),
   paint: (layer) => {
     if (!layer.filled) return linePaint(layer, layer.color ?? FLAT_LINE);
     return {

@@ -97,10 +97,10 @@ function hashParams(p: AvatarParams): number {
 
 export type CurvyMode = "curvy" | "anime" | "comic";
 
-/** 形の作り分け。アニメ風はあごを細く、アメコミ風はあごをがっしりさせる */
+/** 形の作り分け。アニメ風とアメコミ風は、ほおをふっくらさせ、あごを丸くして親しみやすくする */
 function faceForMode(f: Face, mode: CurvyMode): Face {
-  if (mode === "anime") return { ...f, cheekY: f.cheekY - 2, jawW: f.jawW * 0.8, chinW: Math.max(4, f.chinW * 0.35), chinY: f.chinY + 2 };
-  if (mode === "comic") return { ...f, jawW: f.jawW + 4, jawY: f.jawY + 2, chinW: f.chinW + 7 };
+  if (mode === "anime") return { ...f, top: f.top + 2, cheekW: f.cheekW + 1, cheekY: f.cheekY + 4, jawW: f.jawW * 0.9 + 4, jawY: f.jawY - 4, chinW: f.chinW * 0.7 + 7, chinY: f.chinY - 3 };
+  if (mode === "comic") return { ...f, cheekW: f.cheekW + 2, cheekY: f.cheekY + 4, jawW: f.jawW + 3, jawY: f.jawY - 2, chinW: f.chinW + 6, chinY: f.chinY - 2 };
   return f;
 }
 
@@ -169,7 +169,7 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
   }
 
   // ── 首と服 ──
-  const neckW = anime ? 13 : comic ? 18 : 16;
+  const neckW = anime ? 15 : comic ? 17 : 16;
   const neck: Shape = { type: "path", d: spline([[120 - neckW, 144], [120 - neckW + 1.5, 164], [120 - neckW - 4, 190], [120 + neckW + 4, 190], [120 + neckW - 1.5, 164], [120 + neckW, 144]], true) };
   fill("face", "skin", neck, skin);
   // あごの影。輪郭を少し下にずらした形を首の形で切り抜く
@@ -225,8 +225,10 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
   // ── 顔 ──
   fill("face", "skin", faceShape, skin);
   if (comic) {
-    // 左から光が当たっているように、顔の右側に影を入れる
-    fill("face", "shadow", spline([[160, 40], [152, 74], [158, 104], [152, 138], [140, 166], [134, 200], [210, 200], [210, 40]], true), skinShadow, {
+    // 左上から光が当たっているように、顔の右側の輪郭に沿って三日月形の影を入れる
+    const rightSide = facePoints(f).slice(0, 7);
+    const inner = rightSide.map(([x, y]): Point => [120 + (x - 120) * 0.74 + 6, y + 2]);
+    fill("face", "shadow", spline([...inner, [130, f.chinY + 30], [230, f.chinY + 30], [230, f.top - 30], [130, f.top - 30]], true), skinShadow, {
       strokeWidth: 0,
       clip: faceShape,
     });
@@ -234,25 +236,19 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
 
   // ── ほっぺ ──
   for (const s of [-1, 1] as const) {
-    if (!comic) {
-      fill("cheeks", "blush", { type: "ellipse", cx: 120 + s * 34, cy: 130, rx: 11, ry: 6.5 }, BLUSH, { strokeWidth: 0, opacity: p.rosyCheeks ? 0.5 : anime ? 0.3 : 0.16 });
-    }
-    if (anime) {
+    const blushY = anime ? 133 : 130;
+    fill("cheeks", "blush", { type: "ellipse", cx: 120 + s * 34, cy: blushY, rx: 11, ry: 6.5 }, BLUSH, { strokeWidth: 0, opacity: p.rosyCheeks ? 0.5 : anime ? 0.3 : 0.16 });
+    if (anime && p.rosyCheeks) {
       // アニメの照れ線
       for (const dx of [-5, 0, 5]) {
-        line("cheeks", "detail", `M${120 + s * 34 + dx + 2} 126 l-4 7`, 1.4, { color: darken(BLUSH, 0.3), opacity: p.rosyCheeks ? 0.8 : 0.45 });
+        line("cheeks", "detail", `M${120 + s * 34 + dx + 2} ${blushY - 4} l-3 6`, 1.4, { color: darken(BLUSH, 0.3), opacity: 0.7 });
       }
-    }
-    if (comic) {
-      // 頬骨の短い線
-      line("cheeks", "detail", spline([[120 + s * 41, 118], [120 + s * 38, 126], [120 + s * 34, 131]]), 1.5, { color: INK, opacity: 0.55 });
     }
     if (p.freckles) {
       const points = Array.from({ length: 7 }, (): Point => [120 + s * 34 + (rand() - 0.5) * 18, 125 + (rand() - 0.5) * 10]);
       fill("cheeks", "freckle", dots(points, 1.4), FRECKLE, { strokeWidth: 0, opacity: 0.7 });
     }
   }
-  if (comic) line("face", "detail", spline([[115, f.chinY - 6], [120, f.chinY - 4], [125, f.chinY - 6]]), 1.5, { color: INK, opacity: 0.7 });
 
   // ── 頭の髪 ──
   if (p.hairLength === "bald") {
@@ -267,7 +263,8 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
   // 毛束（中心線と太さ）を、前髪の種類・分け目・髪を立てているかで作り分ける
   type Strand = { center: Point[]; width: (t: number) => number };
   const strands: Strand[] = [];
-  const sharp = anime ? 1.5 : 1.1;
+  // 毛束の太さ。アニメ風とアメコミ風は、先を丸くして柔らかい印象にする
+  const taper = (w: number, tip = 0.8) => (mode === "curvy" ? (t: number) => w * (1 - t) ** 1.1 + tip : (t: number) => w * Math.sqrt(1 - t) * (1 - 0.35 * t) + tip);
   const flip = (points: Point[]) => (p.hairParting === "right" ? mirror(points) : points);
   if (hasCap) {
     if (spiky) {
@@ -275,25 +272,25 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
       for (const i of [-4, 4, -3, 3, -2, 2, -1, 1, 0]) {
         const bx = 120 + i * 11;
         const lift = (4 - Math.abs(i)) * 3;
-        strands.push({ center: [[bx, 66], [bx + i * 4, 48 - lift], [bx + i * 8, 30 - lift]], width: (t) => 30 * (1 - t) ** sharp + 0.5 });
+        strands.push({ center: [[bx, 66], [bx + i * 4, 48 - lift], [bx + i * 8, 30 - lift]], width: (t) => 30 * (1 - t) ** 1.1 + 0.5 });
       }
     } else if (p.bangs === "full") {
       const tips: Point[] = anime
-        ? [[78, 106], [88, 96], [98, 104], [109, 94], [120, 102], [131, 94], [142, 104], [152, 96], [162, 106]]
+        ? [[79, 104], [90, 99], [101, 102], [112, 97], [120, 100], [128, 97], [139, 102], [150, 99], [161, 104]]
         : [[80, 104], [93, 97], [106, 101], [120, 95], [134, 101], [147, 97], [160, 104]];
       const order = [...tips.keys()].sort((a, b) => Math.abs(b - (tips.length - 1) / 2) - Math.abs(a - (tips.length - 1) / 2));
       for (const i of order) {
         const [tx, ty] = tips[i];
         strands.push({
           center: [[120 + (tx - 120) * 0.3, 48], [120 + (tx - 120) * 0.85, 68 + Math.abs(tx - 120) * 0.12], [tx, ty]],
-          width: (t) => (anime ? 20 : 24) * (1 - t) ** sharp + 0.8,
+          width: taper(anime ? 20 : 24),
         });
       }
     } else if (p.bangs === "side") {
       const tips: Point[] = [[78, 100], [166, 104], [150, 96], [134, 99], [116, 94]];
       tips.forEach(([tx, ty], i) => {
         const root: Point = [100 + i * 3, 48];
-        strands.push({ center: flip([root, [(root[0] + tx) / 2 - 6, 66], [tx, ty]]), width: (t) => 26 * (1 - t) ** sharp + 0.8 });
+        strands.push({ center: flip([root, [(root[0] + tx) / 2 - 6, 66], [tx, ty]]), width: taper(26) });
       });
     } else if (p.hairParting === "left" || p.hairParting === "right") {
       // 分け目から、狭いほうと広いほうに流す
@@ -320,7 +317,7 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
     fill("hair", "hair", capShape, hair);
     if (comic) {
       // 髪の右側の影
-      fill("hair", "shadow", spline([[150, 20], [146, 60], [160, 90], [172, 130], [200, 130], [200, 20]], true), darken(hair, 0.35), { strokeWidth: 0, clip: capShape });
+      fill("hair", "shadow", spline([[150, 20], [146, 60], [160, 90], [172, 130], [200, 130], [200, 20]], true), darken(hair, 0.22), { strokeWidth: 0, clip: capShape });
     }
     for (const { center, width } of strands) fill("hairstyle", "hair", brush(center, width), hair, { strokeWidth: 2.2 });
     // 髪の流れの線
@@ -330,8 +327,8 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
     // ハイライト。アニメ風はギザギザの天使の輪にする
     const highlight = p.hairColor === "blonde" || p.hairColor === "gray" ? WHITE : lighten(hair, 0.45);
     if (anime && !spiky) {
-      const ringPoints: Point[] = [[84, 60], [100, 47], [120, 43], [140, 47], [156, 60], [150, 63], [144, 56], [138, 63], [130, 55], [120, 62], [110, 55], [102, 63], [96, 56], [90, 63]];
-      fill("hair", "hairHighlight", spline(ringPoints, true), WHITE, { strokeWidth: 0, opacity: 0.55 });
+      // 天使の輪。なめらかな帯にする
+      fill("hair", "hairHighlight", brush([[84, 62], [100, 50], [120, 46], [140, 50], [156, 62]], (t) => 5.5 * Math.sin(Math.PI * t) + 0.5), WHITE, { strokeWidth: 0, opacity: 0.5 });
     } else if (!comic) {
       fill("hair", "hairHighlight", brush([[86, 58], [100, 46], [118, 41], [130, 42]], (t) => 6 * Math.sin(Math.PI * t) + 0.3), highlight, { strokeWidth: 0, opacity: 0.55 });
     }
@@ -346,9 +343,9 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
     const arched = p.browShape === "arched";
     const base = BROW[p.browThickness];
     if (comic) {
-      // 眉間に寄せた太い眉
-      const center: Point[] = [[120 + s * 9, 99], [120 + s * 21, arched ? 91 : 93.5], [120 + s * 34, arched ? 94 : 95]];
-      fill("brows", "brow", brush(center, (t) => base * 1.35 * (1 - 0.4 * t) + 0.6), darken(bodyHair, 0.25), { strokeWidth: 0 });
+      // 太く、ゆるい弧を描く眉
+      const center: Point[] = [[120 + s * 11, 95], [120 + s * 21, arched ? 87.5 : 90], [120 + s * 33, arched ? 91 : 92]];
+      fill("brows", "brow", brush(center, (t) => base * 1.25 * (0.75 + 0.35 * Math.sin(Math.PI * t)) + 0.4), darken(bodyHair, 0.25), { strokeWidth: 0 });
     } else {
       const dy = anime ? -4 : 0;
       const center: Point[] = [[120 + s * 10, 96 + dy], [120 + s * 21, (arched ? 88.5 : 92) + dy], [120 + s * 33, (arched ? 92.5 : 93.5) + dy]];
@@ -360,33 +357,33 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
   for (const [cx, s] of EYES) {
     const transform = `rotate(${EYE_SLANT[p.eyeSlant] * s} ${cx} ${EYE_Y})`;
     if (anime) {
-      // 縦長の大きな目と、太いまつげ
-      const w = { small: 11, medium: 12.5, large: 14 }[p.eyeSize];
-      const h = w * (p.monolid ? 0.95 : 1.15);
-      const cy = EYE_Y + 1;
+      // 黒目がちな縦長の目。瞳は暗く塗り、ハイライトは大きいものと小さいものの 2 つだけ
+      const w = { small: 10, medium: 11, large: 12.5 }[p.eyeSize];
+      const h = w * (p.monolid ? 1.05 : 1.25);
+      const cy = EYE_Y + 3;
       const iris = IRIS[p.eyeColor];
       const sclera: Shape = { type: "ellipse", cx, cy, rx: w, ry: h };
+      const irisShape: Shape = { type: "ellipse", cx: cx + s * 0.5, cy: cy + h * 0.06, rx: w * 0.8, ry: h * 0.94 };
       fill("eyes", "sclera", sclera, WHITE, { strokeWidth: 0, transform });
-      fill("eyes", "iris", { type: "ellipse", cx: cx + s, cy: cy + h * 0.1, rx: w * 0.72, ry: h * 0.92 }, iris, { strokeWidth: 1.2, clip: sclera, transform });
-      fill("eyes", "shadow", { type: "ellipse", cx, cy: cy - h * 0.55, rx: w * 0.95, ry: h * 0.6 }, darken(iris, 0.45), { strokeWidth: 0, opacity: 0.7, clip: sclera, transform });
-      fill("eyes", "pupil", { type: "ellipse", cx: cx + s, cy: cy + h * 0.15, rx: w * 0.3, ry: h * 0.42 }, darken(iris, 0.7), { strokeWidth: 0, clip: sclera, transform });
-      fill("eyes", "highlight", { type: "circle", cx: cx - s * w * 0.25, cy: cy - h * 0.3, r: w * 0.28 }, WHITE, { strokeWidth: 0, transform });
-      fill("eyes", "highlight", { type: "circle", cx: cx + s * w * 0.3, cy: cy + h * 0.45, r: w * 0.12 }, WHITE, { strokeWidth: 0, transform });
-      const lid: Point[] = [[cx - s * w * 1.05, cy - h * 0.15], [cx - s * w * 0.4, cy - h * 1.02], [cx + s * w * 0.5, cy - h * 0.98], [cx + s * w * 1.15, cy - h * 0.35], [cx + s * w * 1.35, cy - h * 0.05]];
-      fill("eyes", "lash", brush(lid, (t) => 1.5 + (p.monolid ? 5 : 4) * Math.sin(Math.PI * Math.min(1, t * 1.15))), DARK_LINE, { strokeWidth: 0, transform });
-      const lashes = p.longLashes ? 3 : 1;
-      for (let i = 0; i < lashes; i++) {
-        const [lx, ly] = [cx + s * w * (1.1 - i * 0.25), cy - h * (0.4 + i * 0.3)];
-        fill("eyes", "lash", brush([[lx, ly], [lx + s * 5, ly - 3], [lx + s * 8, ly - 2]], (t) => 2.6 * (1 - t) + 0.3), DARK_LINE, { strokeWidth: 0, transform });
+      fill("eyes", "iris", irisShape, mix(iris, DARK_LINE, 0.6), { strokeWidth: 0, clip: sclera, transform });
+      // 瞳の下側に、本来の瞳の色をうっすら見せる
+      fill("eyes", "iris", { type: "ellipse", cx: cx + s * 0.5, cy: cy + h * 0.62, rx: w * 0.6, ry: h * 0.42 }, iris, { strokeWidth: 0, opacity: 0.75, clip: irisShape, transform });
+      fill("eyes", "highlight", { type: "ellipse", cx: cx - s * w * 0.22, cy: cy - h * 0.32, rx: w * 0.3, ry: w * 0.34 }, WHITE, { strokeWidth: 0, transform });
+      fill("eyes", "highlight", { type: "circle", cx: cx + s * w * 0.3, cy: cy + h * 0.4, r: w * 0.11 }, WHITE, { strokeWidth: 0, opacity: 0.9, transform });
+      // 上まぶたは、端を丸くした太さの揃った弧
+      const lid: Point[] = [[cx - s * w * 1.0, cy - h * 0.25], [cx - s * w * 0.45, cy - h * 0.98], [cx + s * w * 0.45, cy - h * 0.98], [cx + s * w * 1.05, cy - h * 0.3]];
+      line("eyes", "lash", spline(lid), p.monolid ? 4 : 3.2, { color: DARK_LINE, transform });
+      if (p.longLashes) {
+        const [lx, ly] = [cx + s * w * 1.05, cy - h * 0.3];
+        line("eyes", "lash", spline([[lx - s * 1, ly + 1], [lx + s * 3, ly - 2], [lx + s * 5, ly - 5]]), 2.6, { color: DARK_LINE, transform });
       }
-      line("eyes", "detail", spline([[cx + s * w * 0.3, cy + h * 0.95], [cx + s * w * 0.75, cy + h * 0.75]]), 1.4, { color: DARK_LINE, opacity: 0.7, transform });
-      if (!p.monolid) line("eyes", "detail", spline([[cx - s * w * 0.6, cy - h * 1.25], [cx + s * w * 0.2, cy - h * 1.5], [cx + s * w * 0.9, cy - h * 1.2]]), 1.4, { color: skinLine, transform });
+      if (!p.monolid) line("eyes", "detail", spline([[cx - s * w * 0.55, cy - h * 1.22], [cx + s * w * 0.15, cy - h * 1.38], [cx + s * w * 0.8, cy - h * 1.15]]), 1.3, { color: skinLine, opacity: 0.8, transform });
       continue;
     }
 
     const { w: baseW, h: baseH } = EYE[p.eyeSize];
     const w = comic ? baseW * 1.05 : baseW;
-    const h = (p.monolid ? baseH * 0.78 : baseH) * (comic ? 0.72 : 1);
+    const h = (p.monolid ? baseH * 0.78 : baseH) * (comic ? 1.5 : 1);
     const cy = EYE_Y;
     const inner: Point = [cx - s * w, cy];
     const outer: Point = [cx + s * w, cy - h * 0.15];
@@ -394,16 +391,9 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
       type: "path",
       d: `M${inner[0]} ${inner[1]} C${cx - s * w * 0.45} ${cy - h * 1.35} ${cx + s * w * 0.5} ${cy - h * 1.3} ${outer[0]} ${outer[1]} C${cx + s * w * 0.55} ${cy + h * 0.85} ${cx - s * w * 0.4} ${cy + h * 0.95} ${inner[0]} ${inner[1]} Z`,
     };
-    if (comic) {
-      // 彫りの深い目元の影
-      fill("eyes", "shadow", spline([[cx - s * w * 1.2, cy - 2], [cx - s * w * 0.6, cy - 9], [cx + s * w * 0.6, cy - 10], [cx + s * w * 1.3, cy - 4], [cx + s * w * 0.6, cy - h - 2], [cx - s * w * 0.6, cy - h - 1]], true), skinShadow, {
-        strokeWidth: 0,
-        transform,
-      });
-    }
     const irisX = cx + s * w * 0.05;
     const irisY = cy - h * 0.05;
-    const irisR = comic ? h * 1.25 : h * 1.05;
+    const irisR = comic ? h * 0.8 : h * 1.05;
     fill("eyes", "sclera", almond, WHITE, { strokeWidth: 1.8, transform });
     fill("eyes", "iris", { type: "circle", cx: irisX, cy: irisY, r: irisR }, IRIS[p.eyeColor], { strokeWidth: 0, clip: almond, transform });
     fill("eyes", "pupil", { type: "circle", cx: irisX, cy: irisY, r: irisR * 0.48 }, INK, { strokeWidth: 0, clip: almond, transform });
@@ -412,7 +402,7 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
     fill("eyes", "highlight", { type: "circle", cx: irisX + irisR * 0.33, cy: irisY - irisR * 0.43, r: irisR * 0.27 }, WHITE, { strokeWidth: 0, clip: almond, transform });
     // 上まぶたの線。目尻に向かって太くする
     const lid: Point[] = [inner, [cx - s * w * 0.4, cy - h * 1.05], [cx + s * w * 0.45, cy - h * 1.0], [outer[0] + s * 2, outer[1] - 1]];
-    fill("eyes", "lash", brush(lid, (t) => (p.monolid ? 2.2 : 1.4) + (comic ? 3.2 : 2.4) * t), INK, { strokeWidth: 0, transform });
+    fill("eyes", "lash", brush(lid, (t) => (p.monolid ? 2.2 : 1.4) + (comic ? 2.2 : 2.4) * t), INK, { strokeWidth: 0, transform });
     if (p.longLashes) {
       fill("eyes", "lash", brush([[outer[0] + s * 1, outer[1] - 1], [outer[0] + s * 5, outer[1] - 4], [outer[0] + s * 8, outer[1] - 8]], (t) => 3 * (1 - t) + 0.3), INK, {
         strokeWidth: 0,
@@ -424,7 +414,7 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
       });
     }
     if (!p.monolid) {
-      line("eyes", "detail", spline([[cx - s * w * 0.75, cy - h * 1.25 - (comic ? 2 : 0)], [cx + s * w * 0.1, cy - h * 1.75 - (comic ? 3 : 0)], [cx + s * w * 0.85, cy - h * 1.3 - (comic ? 2 : 0)]]), comic ? 1.8 : 1.5, {
+      line("eyes", "detail", spline([[cx - s * w * 0.75, cy - h * 1.25], [cx + s * w * 0.1, cy - h * 1.6], [cx + s * w * 0.85, cy - h * 1.3]]), comic ? 1.8 : 1.5, {
         color: skinLine,
         transform,
       });
@@ -436,11 +426,11 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
   if (anime) {
     line("mouth", "nose", spline([[122, 123], [120.5, 126], [119, 127.5]]), 1.8, { color: skinLine });
   } else if (comic) {
+    // 丸いだんご鼻
     const k = NOSE[p.noseSize];
-    line("mouth", "nose", spline([[124, 100], [126, 116], [129, 126]]), 2, { color: INK });
-    line("mouth", "nose", spline([[120 - 8 * k, 127], [120 - 5 * k, 131], [120 - 1, 130.5]]), 2, { color: INK });
-    line("mouth", "nose", spline([[120 + 3, 130.5], [120 + 6 * k, 131], [120 + 8 * k, 127]]), 2, { color: INK });
-    fill("mouth", "shadow", spline([[110, 133], [120, 135.5], [130, 133], [120, 138]], true), skinShadow, { strokeWidth: 0 });
+    const nose = (points: Point[]) => points.map(([x, y]): Point => [120 + x * k, 127 + y * k]);
+    fill("mouth", "shadow", spline(nose([[-8, 4], [0, 7], [9, 4], [1, 10]]), true), skinShadow, { strokeWidth: 0 });
+    line("mouth", "nose", spline(nose([[-2, -8], [-7.5, 0], [-3, 4.5], [4, 4.5], [7.5, 0]])), 2.2, { color: INK });
   } else {
     const k = NOSE[p.noseSize];
     const nostrils: Point[] = [[-7, -1], [-4, 3], [0, 2], [4, 3], [7, -1]].map(([x, y]) => [120 + x * k, 128 + y * k]);
@@ -515,7 +505,7 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
     fill("mouth", "lip", spline([...upper, ...lower], true), lipColor, { strokeWidth: 0, opacity: 0.9 });
     if (!comic) fill("mouth", "highlight", { type: "ellipse", cx: 121, cy: 150 + lt * 0.6, rx: 3.5, ry: 1.3 }, WHITE, { strokeWidth: 0, opacity: 0.35 });
     line("mouth", "mouth", spline([left, [114, mid - 0.8], [120, mid], [126, mid - 0.8], right]), comic ? 2.8 : 2.4);
-    if (comic) line("mouth", "detail", spline([[114, 155 + lt], [120, 156.5 + lt], [126, 155 + lt]]), 2, { color: INK });
+    if (comic) line("mouth", "detail", spline([[115, 155 + lt], [120, 156.3 + lt], [125, 155 + lt]]), 1.8, { color: INK, opacity: 0.6 });
     if (p.smiling) {
       for (const side of [-1, 1]) {
         const dimple: Point[] = [[104.5, 141], [104, 144.5], [105.5, 147]];

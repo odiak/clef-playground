@@ -24,3 +24,10 @@ export function luminance(color: string): number {
   const [r, g, b] = hexToRgb(color);
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
+
+/** 2 色の差（RGB 空間での距離。0〜441） */
+export function colorDistance(a: string, b: string): number {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return Math.hypot(ca[0] - cb[0], ca[1] - cb[1], ca[2] - cb[2]);
+}
