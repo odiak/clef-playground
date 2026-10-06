@@ -94,15 +94,16 @@ const chibiStyle: VectorStyle = {
 
 /**
  * 服の色を白で薄めた背景色。白っぽい服だと背景が真っ白になるので、そのときはサイトのオレンジ系にする。
- * 輪郭線のないスタイルでは、背景が肌の色に近いと髪のない頭が背景に溶け込むので、肌の色と離れるまで濃さを変える
+ * 輪郭線のないスタイルでは、背景が肌や髪の色に近いと頭が背景に溶け込むので、肌と髪の色から離れるまで濃さを変える。
+ * 濃さを変えても離れないとき（黒い服で背景がグレーになり、白髪と重なるときなど）は、サイトのオレンジ系や青系にする
  */
 function backdropColor(layers: Layer[], whiteness: number): string {
   const clothes = layers.find((layer) => layer.part === "clothes")?.color ?? "#f38020";
   const base = luminance(clothes) > 0.8 ? "#f38020" : clothes;
-  const skin = layers.find((layer) => layer.part === "skin")?.color;
-  const candidates = [0, -0.12, -0.24, -0.36, 0.12].map((dt) => mix(base, "#ffffff", Math.min(0.95, whiteness + dt)));
-  if (!skin) return candidates[0];
-  return candidates.find((color) => colorDistance(color, skin) >= 60) ?? candidates.reduce((a, b) => (colorDistance(a, skin) >= colorDistance(b, skin) ? a : b));
+  const avoid = [layers.find((layer) => layer.part === "skin")?.color, layers.find((layer) => layer.part === "hair")?.color].filter((c): c is string => !!c);
+  const candidates = [base, "#f38020", "#5b9be0"].flatMap((hue) => [0, -0.12, -0.24, -0.36, 0.12].map((dt) => mix(hue, "#ffffff", Math.min(0.95, whiteness + dt))));
+  const score = (color: string) => Math.min(Infinity, ...avoid.map((c) => colorDistance(color, c)));
+  return candidates.find((color) => score(color) >= 60) ?? candidates.reduce((a, b) => (score(a) >= score(b) ? a : b));
 }
 
 /** 点の目と輪郭線なしのフラットな塗り。背景は服の色に合わせる */
@@ -157,32 +158,44 @@ const flatStyle: VectorStyle = {
 
 const ANIME_LINE = "#3a2626";
 
-/** 日本のアニメ風。塗り色を濃くした細い線と、境目のはっきりした影 */
+/** もくもくした雲。下を平らにした円の集まり */
+function cloud(cx: number, cy: number, size: number, key: string) {
+  const puffs = [
+    [-1.6, 0.1, 0.55],
+    [-0.8, -0.35, 0.8],
+    [0.2, -0.6, 1],
+    [1.1, -0.2, 0.75],
+    [1.8, 0.15, 0.5],
+  ];
+  return (
+    <g key={key} fill="#ffffff">
+      {puffs.map(([dx, dy, r]) => (
+        <circle key={`${dx}`} cx={cx + dx * size} cy={cy + dy * size} r={r * size} />
+      ))}
+      <rect x={cx - 1.9 * size} y={cy} width={3.9 * size} height={0.65 * size} rx={0.32 * size} />
+    </g>
+  );
+}
+
+/** ジブリ風。細い線と、境目のはっきりした影、青空と雲の背景 */
 const animeStyle: VectorStyle = {
   variant: "anime",
   placeholder: ANIME_LINE,
   defs: (_, ctx) => (
     <linearGradient id={ctx.id("bg")} x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stopColor="#e6f3ff" />
-      <stop offset="1" stopColor="#ffe6f0" />
+      <stop offset="0" stopColor="#8fcaf0" />
+      <stop offset="0.7" stopColor="#d4ecf8" />
+      <stop offset="1" stopColor="#eef8fc" />
     </linearGradient>
   ),
   background: (ctx) => (
     <>
       <rect width={240} height={240} fill={`url(#${ctx.id("bg")})`} />
-      {[
-        [38, 48, 5],
-        [200, 64, 4],
-        [30, 150, 3.5],
-        [210, 168, 5],
-      ].map(([cx, cy, r]) => (
-        <path
-          key={`${cx}-${cy}`}
-          d={`M${cx} ${cy - r * 2} Q${cx} ${cy} ${cx + r * 2} ${cy} Q${cx} ${cy} ${cx} ${cy + r * 2} Q${cx} ${cy} ${cx - r * 2} ${cy} Q${cx} ${cy} ${cx} ${cy - r * 2} Z`}
-          fill="#ffffff"
-          opacity={0.9}
-        />
-      ))}
+      <g opacity={0.95}>
+        {cloud(36, 178, 22, "left")}
+        {cloud(212, 150, 18, "right")}
+        {cloud(196, 40, 9, "top")}
+      </g>
     </>
   ),
   paint: (layer) => {

@@ -1,4 +1,5 @@
 import type { OptionId } from "../../../shared/avatar";
+import { darken, lighten, luminance } from "./color";
 
 // アバターで使う色。形のバリエーション（geometry*.ts）から共通で使う
 
@@ -50,3 +51,16 @@ export const LIP = "#e07a86";
 export const BLUSH = "#ff7f8a";
 export const FRECKLE = "#8a5a3b";
 export const GOLD = "#f7c948";
+
+/**
+ * 肌の上で見分けられる髪（眉・ひげ）の色。輪郭線のないスタイルでは、金髪と明るい肌、茶髪と濃い肌のように
+ * 明るさが近いと髪が肌に溶け込むので、明るさの差が足りるまで、髪を肌から離れる向きに暗く（明るく）する
+ */
+export function hairOnSkin(hair: string, skin: string, minDiff = 0.2): string {
+  const h = luminance(hair);
+  const s = luminance(skin);
+  if (Math.abs(h - s) >= minDiff) return hair;
+  // 髪は暗くするほうが自然なので、肌より明るい髪でも、明るくして白に近づきすぎるなら暗くする
+  if (h > s && s + minDiff <= 0.92) return lighten(hair, (s + minDiff - h) / (1 - h));
+  return darken(hair, 1 - (s - minDiff) / h);
+}

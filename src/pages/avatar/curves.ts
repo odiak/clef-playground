@@ -82,3 +82,13 @@ export function random(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/**
+ * 帽子の輪郭（左のつばから上を回って右のつばまで）の内側と、つばより下だけを残す切り抜きの path。
+ * 帽子の後ろから髪がはみ出ないように、髪をこの形で切り抜く
+ */
+export function underHat(outline: Point[]): string {
+  const points = sampleSpline(outline, 6);
+  const [first, last] = [points[0], points[points.length - 1]];
+  return `M-20 260 L-20 ${round(first[1])} ${points.map((p) => `L${fmt(p)}`).join(" ")} L260 ${round(last[1])} L260 260 Z`;
+}

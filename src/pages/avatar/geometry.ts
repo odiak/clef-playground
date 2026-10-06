@@ -1,7 +1,8 @@
 import type { AvatarStageId, OptionId } from "../../../shared/avatar";
 import { darken } from "./color";
+import { type Point, underHat } from "./curves";
 import { buildCurvyLayers } from "./geometryCurvy";
-import { BLUSH, CLOTHES, FRECKLE, GOLD, HAIR, INK, IRIS, LIP, MOUTH_INSIDE, SKIN, WHITE } from "./palette";
+import { BLUSH, CLOTHES, FRECKLE, GOLD, HAIR, hairOnSkin, INK, IRIS, LIP, MOUTH_INSIDE, SKIN, WHITE } from "./palette";
 import type { AvatarParams } from "./params";
 
 // アバターの形（どこに何を描くか）だけを決める。色の塗り方や線の描き方はスタイル（styles.ts）が決める
@@ -111,6 +112,12 @@ const path = (d: string): Shape => ({ type: "path", d });
 const circle = (cx: number, cy: number, r: number): Shape => ({ type: "circle", cx, cy, r });
 const ellipse = (cx: number, cy: number, rx: number, ry: number): Shape => ({ type: "ellipse", cx, cy, rx, ry });
 
+/** 帽子の輪郭（左のつばから上を回って右のつばまで）。帽子の path の曲線上の点 */
+const HAT_OUTLINE: Record<"cap" | "beanie", Point[]> = {
+  cap: [[62, 94], [66, 65.4], [79, 45.5], [98, 33.8], [120, 30], [142, 33.8], [161, 45.5], [174, 65.4], [178, 94]],
+  beanie: [[62, 92], [66, 63.4], [79, 43.5], [98, 31.8], [120, 28], [142, 31.8], [161, 43.5], [174, 63.4], [178, 92]],
+};
+
 /** パーツの形のバリエーション */
 export type GeometryVariant = "standard" | "chibi" | "minimal" | "curvy" | "anime" | "comic";
 
@@ -126,6 +133,7 @@ const MUSTACHE: Record<"thin" | "thick", { d: string; strokeWidth: number }> = {
   thin: { d: "M108 138 C114 134 118 135 120 137 C122 135 126 134 132 138 C126 139.5 122 139 120 138.5 C118 139 114 139.5 108 138 Z", strokeWidth: 1.5 },
   thick: { d: "M102 138 C108 129 116 131 120 135 C124 131 132 129 138 138 C131 143 124 141 120 139 C116 141 109 143 102 138 Z", strokeWidth: 2 },
 };
+const STUBBLE = "M56 112 C58 172 94 190 120 190 C146 190 182 172 184 112 C166 146 144 158 120 158 C96 158 74 146 56 112 Z";
 const BEARD = {
   goatee: "M108 152 Q120 149 132 152 Q133 166 120 172 Q107 166 108 152 Z",
   short: "M80 128 C82 158 102 172 120 172 C138 172 158 158 160 128 C154 148 140 156 120 156 C100 156 86 148 80 128 Z",
@@ -155,9 +163,9 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   const minimal = variant === "minimal";
 
   const skin = SKIN[p.skinTone];
-  const hair = HAIR[p.hairColor];
+  const hair = hairOnSkin(HAIR[p.hairColor], skin);
   // 眉やひげの色。髪がない人や、髪を派手な色に染めている人はこげ茶にする
-  const bodyHair = p.hairLength === "bald" || p.hairColor === "colorful" ? HAIR.dark_brown : hair;
+  const bodyHair = p.hairLength === "bald" || p.hairColor === "colorful" ? hairOnSkin(HAIR.dark_brown, skin) : hair;
   const head = HEAD[p.faceShape];
   const hasLongHair = p.hairLength === "medium" || p.hairLength === "long";
   const updo = hasLongHair ? p.hairUpdo : "none";
@@ -173,6 +181,8 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
     fill("hairstyle", "hair", path(TWINTAIL), hair);
     fill("hairstyle", "hair", path(TWINTAIL), hair, { transform: "matrix(-1 0 0 1 240 0)" });
   }
+  // まとめ髪は帽子の外に出ていてよいので、帽子の形で切り抜かない
+  const updoLayers = new Set(hairLayers);
   if (hairBack && !spiky) {
     fill("hair", "hair", path(HAIR_BACK[hairBack]), hair);
     if (p.hairTexture === "curly") {
@@ -193,6 +203,10 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
     bodyLayers.add(fill("clothes", "clothes", path("M30 240 C34 202 62 182 99 178 L141 178 C178 182 206 202 210 240 Z"), CLOTHES[p.clothingColor]));
     bodyLayers.add(fill("clothes", "skin", path("M99 178 Q120 196 141 178 Z"), skin));
   }
+
+  // 顔の後ろに敷く髪。髪の内側の縁と顔の輪郭の間に、背景が見えるすき間ができないようにする
+  const hasCap = p.hairLength !== "bald" && p.hairLength !== "buzz" && !spiky;
+  if (hasCap) fill("hair", "hair", path(`${HAIR_CAP_TOP} L176 118 L64 118 Z`), hair, { strokeWidth: 0 });
 
   // 耳とピアス
   fill("face", "skin", circle(120 - head.halfWidth - 1, 116, 11), skin);
@@ -317,7 +331,8 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   else if (!minimal) line("mouth", "nose", NOSE[p.noseSize], 3);
 
   // あごひげと口ひげ
-  if (p.beard === "stubble") fill("beard", "stubble", path(BEARD.full), bodyHair, { strokeWidth: 0, fillOpacity: 0.28 });
+  // 無精ひげは、顔の輪郭まで届く大きめの形を、顔の形で切り抜く（首や顔の外にはみ出さないように）
+  if (p.beard === "stubble") fill("beard", "stubble", path(STUBBLE), bodyHair, { strokeWidth: 0, fillOpacity: 0.28, clip: head.shape });
   else if (p.beard !== "none") fill("beard", "facialHair", path(BEARD[p.beard]), bodyHair, { strokeWidth: 3 });
   if (p.mustache !== "none") {
     const { d, strokeWidth } = MUSTACHE[p.mustache];
@@ -381,9 +396,15 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   }
 
   // 髪のボリュームに合わせて、髪のパーツを少し縮めたり膨らませたりする
-  const volume = { flat: "translate(120 100) scale(0.95 0.97) translate(-120 -100)", normal: null, full: "translate(120 100) scale(1.08 1.06) translate(-120 -100)" }[
-    p.hairVolume
-  ];
+  const [sx, sy] = { flat: [0.95, 0.97], normal: [1, 1], full: [1.08, 1.06] }[p.hairVolume];
+  const volume = sx === 1 ? null : `translate(120 100) scale(${sx} ${sy}) translate(-120 -100)`;
+  // 帽子の後ろから髪がはみ出ないよう、髪を帽子の形とつばより下で切り抜く。
+  // 切り抜きの形は髪と一緒に拡大縮小されるので、帽子の輪郭を逆に縮めておく
+  if (p.hat !== "none") {
+    const outline = HAT_OUTLINE[p.hat].map(([x, y]): Point => [120 + (x - 120) / sx, 100 + (y - 100) / sy]);
+    const clip = path(underHat(outline));
+    for (const layer of hairLayers) if (!updoLayers.has(layer) && !layer.clip) layer.clip = clip;
+  }
   // ちびキャラは頭を大きくする。帽子が上で切れないよう、少し下げる
   const chibiScale = chibi ? "translate(0 7) translate(120 104) scale(1.16) translate(-120 -104)" : null;
   for (const layer of layers) {
