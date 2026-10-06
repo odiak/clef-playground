@@ -9,9 +9,11 @@ export type AvatarStyleId = VectorStyleId | "pixel";
 
 export const AVATAR_STYLES: { id: AvatarStyleId; label: string }[] = [
   { id: "pop", label: "ポップ" },
-  { id: "illust", label: "イラスト" },
   { id: "chibi", label: "ちびキャラ" },
   { id: "minimal", label: "シンプル" },
+  { id: "smooth", label: "なめらか" },
+  { id: "flat", label: "フラット" },
+  { id: "illust", label: "イラスト" },
   { id: "soft", label: "ぷっくり" },
   { id: "lineart", label: "線画" },
   { id: "watercolor", label: "水彩" },

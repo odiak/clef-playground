@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { darken, fromHsl, lighten, luminance, mix, toHsl } from "./color";
+import { spline } from "./curves";
 import { type GeometryVariant, INK, type Layer, type Part, WHITE } from "./geometry";
 
 export type Paint = {
@@ -40,8 +41,9 @@ const linePaint = (layer: Layer, stroke: string, strokeWidth = layer.strokeWidth
 });
 
 /** 太い輪郭線とフラットな色 */
-export function popStyle(outlineScale = 1): VectorStyle {
+export function popStyle(outlineScale = 1, variant?: GeometryVariant): VectorStyle {
   return {
+    variant,
     placeholder: INK,
     background: () => (
       <>
@@ -356,7 +358,46 @@ const minimalStyle: VectorStyle = {
       : linePaint(layer, layer.color === WHITE ? WHITE : layer.part === "brow" ? layer.color ?? "#3b3540" : "#3b3540"),
 };
 
+// フラットの背景に置く、ゆるい曲線の形
+const BLOB = spline(
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
+    const a = (i / 10) * Math.PI * 2;
+    const r = [104, 96, 108, 100, 92, 106, 98, 110, 94, 102][i];
+    return [120 + Math.cos(a) * r, 122 + Math.sin(a) * r];
+  }),
+  true,
+);
+const FLAT_LINE = "#3b2b2b";
+
+/** 曲線を作り込んだ形に、輪郭線なしの塗りと影 */
+const flatStyle: VectorStyle = {
+  variant: "curvy",
+  placeholder: FLAT_LINE,
+  background: (_, layers) => {
+    const clothes = layers.find((layer) => layer.part === "clothes")?.color ?? "#f38020";
+    const base = luminance(clothes) > 0.8 ? "#f38020" : clothes;
+    return (
+      <>
+        <rect width={240} height={240} fill="#fbf7f1" />
+        <path d={BLOB} fill={mix(base, "#ffffff", 0.72)} />
+      </>
+    );
+  },
+  paint: (layer) => {
+    if (!layer.filled) return linePaint(layer, layer.color ?? FLAT_LINE);
+    return {
+      fill: layer.color ?? INK,
+      stroke: layer.part === "lens" ? FLAT_LINE : "none",
+      strokeWidth: layer.part === "lens" ? 2.5 : 0,
+      fillOpacity: layer.fillOpacity,
+      opacity: layer.opacity,
+    };
+  },
+};
+
 export const VECTOR_STYLES = {
+  smooth: popStyle(1, "curvy"),
+  flat: flatStyle,
   pop: popStyle(),
   illust: illustStyle,
   chibi: chibiStyle,
