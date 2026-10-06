@@ -194,7 +194,7 @@ const animeStyle: VectorStyle = {
   },
 };
 
-/** アメコミ風。太い黒の輪郭線と、網点（スクリーントーン）の影、集中線の背景 */
+/** アメコミ風。太い黒の輪郭線と、網点（スクリーントーン）の影、集中線の背景（帽子や肌の暖色が映えるよう寒色） */
 const comicStyle: VectorStyle = {
   variant: "comic",
   placeholder: INK,
@@ -209,18 +209,18 @@ const comicStyle: VectorStyle = {
           </pattern>
         ))}
         <pattern id={ctx.id("bgdots")} width={7} height={7} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <circle cx={3.5} cy={3.5} r={1.8} fill="#ff4d3d" opacity={0.55} />
+          <circle cx={3.5} cy={3.5} r={1.8} fill="#1f6fd1" opacity={0.35} />
         </pattern>
       </>
     );
   },
   background: (ctx) => (
     <>
-      <rect width={240} height={240} fill="#ffd23f" />
+      <rect width={240} height={240} fill="#7fd4ff" />
       {Array.from({ length: 16 }, (_, i) => {
         const a = (i / 16) * Math.PI * 2;
         const b = a + Math.PI / 16;
-        return <path key={i} d={`M120 110 L${120 + Math.cos(a) * 240} ${110 + Math.sin(a) * 240} L${120 + Math.cos(b) * 240} ${110 + Math.sin(b) * 240} Z`} fill="#ff8a3d" opacity={0.6} />;
+        return <path key={i} d={`M120 110 L${120 + Math.cos(a) * 240} ${110 + Math.sin(a) * 240} L${120 + Math.cos(b) * 240} ${110 + Math.sin(b) * 240} Z`} fill="#3b9cf0" opacity={0.55} />;
       })}
       <rect width={240} height={240} fill={`url(#${ctx.id("bgdots")})`} />
     </>

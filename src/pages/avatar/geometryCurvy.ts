@@ -135,7 +135,8 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
   const faceShape: Shape = { type: "path", d: spline(facePoints(f), true) };
   const hasLongHair = p.hairLength === "medium" || p.hairLength === "long";
   const updo = hasLongHair ? p.hairUpdo : "none";
-  const spiky = p.hairStyledUp && (p.hairLength === "short" || p.hairLength === "medium") && updo === "none";
+  // 帽子をかぶっていると髪は立たないので、立てた髪は帽子がないときだけ描く
+  const spiky = p.hairStyledUp && (p.hairLength === "short" || p.hairLength === "medium") && updo === "none" && p.hat === "none";
   const hairBack = hasLongHair && updo === "none" && !spiky ? (p.hairLength as "medium" | "long") : null;
   const hasCap = p.hairLength !== "bald" && p.hairLength !== "buzz";
   // 髪のボリュームに合わせて、髪の輪郭を横と上に広げる
@@ -225,7 +226,7 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
   fill("face", "skin", faceShape, skin);
   if (comic) {
     // 左から光が当たっているように、顔の右側に影を入れる
-    fill("face", "shadow", spline([[146, 40], [134, 76], [140, 106], [134, 140], [124, 170], [122, 200], [210, 200], [210, 40]], true), skinShadow, {
+    fill("face", "shadow", spline([[160, 40], [152, 74], [158, 104], [152, 138], [140, 166], [134, 200], [210, 200], [210, 40]], true), skinShadow, {
       strokeWidth: 0,
       clip: faceShape,
     });
@@ -270,10 +271,11 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
   const flip = (points: Point[]) => (p.hairParting === "right" ? mirror(points) : points);
   if (hasCap) {
     if (spiky) {
-      for (const i of [-3, 3, -2, 2, -1, 1, 0]) {
-        const bx = 120 + i * 14;
-        const lift = (3 - Math.abs(i)) * 4;
-        strands.push({ center: [[bx, 68], [bx + i * 5, 46 - lift], [bx + i * 10, 24 - lift]], width: (t) => 22 * (1 - t) ** sharp + 0.5 });
+      // 外側から順に重ねる。根元は太くして、毛束どうしをつなげる
+      for (const i of [-4, 4, -3, 3, -2, 2, -1, 1, 0]) {
+        const bx = 120 + i * 11;
+        const lift = (4 - Math.abs(i)) * 3;
+        strands.push({ center: [[bx, 66], [bx + i * 4, 48 - lift], [bx + i * 8, 30 - lift]], width: (t) => 30 * (1 - t) ** sharp + 0.5 });
       }
     } else if (p.bangs === "full") {
       const tips: Point[] = anime
@@ -527,18 +529,22 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
     const sunglasses = p.glasses === "sunglasses";
     // 右のレンズを作って、左は反転する
     const cx = 142;
-    const lens: Point[] =
+    const baseLens: Point[] =
       p.glasses === "round"
         ? ring([cx, 112], 10, () => 15)
         : sunglasses
           ? [[cx - 16, 103], [cx + 16, 103], [cx + 15, 112], [cx + 6, 122], [cx - 8, 121], [cx - 15, 113]]
           : [[cx - 16, 102], [cx, 100.5], [cx + 16, 102], [cx + 16.5, 113], [cx + 14, 123], [cx, 124], [cx - 14, 123], [cx - 16.5, 113]];
+    // アニメ風は目が大きいので、レンズも大きくする
+    const lensScale = anime ? 1.2 : 1;
+    const lens = baseLens.map(([x, y]): Point => [cx + (x - cx) * lensScale, 113 + (y - 113) * lensScale]);
     for (const points of [mirror(lens), lens]) {
       fill("extras", "lens", spline(points, true), sunglasses ? INK : WHITE, { strokeWidth: 3, fillOpacity: sunglasses ? 0.9 : 0.18 });
     }
-    line("extras", "frame", spline([[113, 109], [120, 105], [127, 109]]), 3);
-    line("extras", "frame", spline([[82, 108], [120 - f.cheekW + 1, 105]]), 3);
-    line("extras", "frame", spline([[158, 108], [120 + f.cheekW - 1, 105]]), 3);
+    const edge = 16.5 * lensScale;
+    line("extras", "frame", spline([[142 - edge + 0.5, 109], [120, 105], [98 + edge - 0.5, 109]]), 3);
+    line("extras", "frame", spline([[98 - edge, 108], [120 - f.cheekW + 1, 105]]), 3);
+    line("extras", "frame", spline([[142 + edge, 108], [120 + f.cheekW - 1, 105]]), 3);
     if (sunglasses) {
       for (const x of [98, 142]) line("extras", "shine", spline([[x - 9, 108], [x - 4, 105], [x + 1, 104]]), 2, { color: WHITE, opacity: 0.6 });
     }
@@ -555,10 +561,10 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
     fill("extras", "hatShade", { type: "circle", cx: 120, cy: 31, r: 4 }, darken(color, 0.2), { strokeWidth: 2 });
   } else if (p.hat === "beanie") {
     const color = "#faae40";
-    fill("extras", "hat", spline(ring([120, 22], 14, (i) => (i % 2 ? 9 : 12)), true), color);
-    fill("extras", "hat", spline([[60, 102], [62, 62], [86, 36], [120, 30], [154, 36], [178, 62], [180, 102], [120, 98]], true), color);
-    fill("extras", "hatShade", { type: "rect", x: 56, y: 90, width: 128, height: 18, rx: 9 }, "#f38020");
-    const ribs = Array.from({ length: 15 }, (_, i) => `M${64 + i * 8} 93 L${64 + i * 8} 105`).join(" ");
+    fill("extras", "hat", spline(ring([120, 18], 14, (i) => (i % 2 ? 9 : 12)), true), color);
+    fill("extras", "hat", spline([[60, 98], [62, 58], [86, 32], [120, 26], [154, 32], [178, 58], [180, 98], [120, 94]], true), color);
+    fill("extras", "hatShade", { type: "rect", x: 56, y: 86, width: 128, height: 18, rx: 9 }, "#f38020");
+    const ribs = Array.from({ length: 15 }, (_, i) => `M${64 + i * 8} 89 L${64 + i * 8} 101`).join(" ");
     line("extras", "detail", ribs, 1.6, { color: darken("#f38020", 0.2) });
   }
 

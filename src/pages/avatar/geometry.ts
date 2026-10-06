@@ -115,7 +115,7 @@ const ellipse = (cx: number, cy: number, rx: number, ry: number): Shape => ({ ty
 export type GeometryVariant = "standard" | "chibi" | "minimal" | "curvy" | "anime" | "comic";
 
 // 立てた髪（ツンツン頭）
-const SPIKY = "M64 118 C60 82 64 60 76 46 L80 22 L94 38 L104 12 L116 32 L128 10 L138 32 L152 16 L156 42 C170 54 180 82 176 118 C172 92 154 64 120 64 C86 64 68 92 64 118 Z";
+const SPIKY = "M64 118 C60 82 64 60 76 48 L82 30 L94 42 L104 22 L116 38 L128 20 L138 38 L150 26 L156 44 C170 56 180 82 176 118 C172 92 154 64 120 64 C86 64 68 92 64 118 Z";
 // まとめ髪
 const PONYTAIL = "M156 50 C194 56 206 108 190 156 C186 136 180 112 166 90 Z";
 const TWINTAIL = "M68 72 C32 80 26 140 42 180 C50 152 58 122 74 96 Z";
@@ -162,7 +162,8 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   const hasLongHair = p.hairLength === "medium" || p.hairLength === "long";
   const updo = hasLongHair ? p.hairUpdo : "none";
   const hairBack = hasLongHair && updo === "none" ? (p.hairLength as "medium" | "long") : null;
-  const spiky = p.hairStyledUp && (p.hairLength === "short" || p.hairLength === "medium") && updo === "none";
+  // 帽子をかぶっていると髪は立たないので、立てた髪は帽子がないときだけ描く
+  const spiky = p.hairStyledUp && (p.hairLength === "short" || p.hairLength === "medium") && updo === "none" && p.hat === "none";
   const eyeY = chibi ? 116 : minimal ? 114 : EYE_Y;
 
   // まとめ髪と後ろ髪
@@ -320,7 +321,8 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   else if (p.beard !== "none") fill("beard", "facialHair", path(BEARD[p.beard]), bodyHair, { strokeWidth: 3 });
   if (p.mustache !== "none") {
     const { d, strokeWidth } = MUSTACHE[p.mustache];
-    fill("beard", "facialHair", path(d), bodyHair, { strokeWidth });
+    // ちびキャラは口が高い位置にあるので、口ひげも上げる
+    fill("beard", "facialHair", path(d), bodyHair, { strokeWidth, transform: chibi ? "translate(0 -5)" : undefined });
   }
 
   // 口
@@ -373,17 +375,17 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
     fill("extras", "hatShade", path("M62 94 Q120 82 178 94 Q182 108 120 102 Q58 108 62 94 Z"), "#c95f0a");
     fill("extras", "hatShade", circle(120, 31, 4), "#c95f0a", { strokeWidth: 2.5 });
   } else if (p.hat === "beanie") {
-    fill("extras", "hat", circle(120, 26, 11), "#faae40");
-    fill("extras", "hat", path("M62 96 C60 52 90 32 120 32 C150 32 180 52 178 96 Z"), "#faae40");
-    fill("extras", "hatShade", { type: "rect", x: 58, y: 88, width: 124, height: 18, rx: 9 }, "#f38020");
+    fill("extras", "hat", circle(120, 22, 11), "#faae40");
+    fill("extras", "hat", path("M62 92 C60 48 90 28 120 28 C150 28 180 48 178 92 Z"), "#faae40");
+    fill("extras", "hatShade", { type: "rect", x: 58, y: 84, width: 124, height: 18, rx: 9 }, "#f38020");
   }
 
   // 髪のボリュームに合わせて、髪のパーツを少し縮めたり膨らませたりする
   const volume = { flat: "translate(120 100) scale(0.95 0.97) translate(-120 -100)", normal: null, full: "translate(120 100) scale(1.08 1.06) translate(-120 -100)" }[
     p.hairVolume
   ];
-  // ちびキャラは頭を大きくする
-  const chibiScale = chibi ? "translate(120 104) scale(1.16) translate(-120 -104)" : null;
+  // ちびキャラは頭を大きくする。帽子が上で切れないよう、少し下げる
+  const chibiScale = chibi ? "translate(0 7) translate(120 104) scale(1.16) translate(-120 -104)" : null;
   for (const layer of layers) {
     const transforms = [
       !bodyLayers.has(layer) ? chibiScale : null,

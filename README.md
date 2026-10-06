@@ -29,6 +29,15 @@ Workers AI のバインディングはローカル開発でもリモートの Cl
 
 `wrangler.jsonc` を変更したら `npm run cf-typegen` で `worker-configuration.d.ts` を再生成する。
 
+## アバターの見た目の確認
+
+開発サーバーで `/avatar/gallery` を開くと、ランダムな回答で作ったアバターを全スタイルで並べて確認できる（本番には含めない）。
+
+- `seed`, `count`: 乱数の種と数
+- `style=anime&cols=6`: 1 つのスタイルだけを敷き詰める
+- `hat=none` のように質問 ID を指定すると、その回答に固定する
+- `text=0`: パラメーターの表示を消す
+
 ## OGP 画像
 
 `ogp/*.html` をヘッドレス Chrome で 1200×630 の PNG にして `public/ogp/` に置いている。ページごとの title と OGP タグは `worker/pages.ts` で `index.html` に差し込む。
