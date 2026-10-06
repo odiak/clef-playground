@@ -78,13 +78,17 @@ const HEAD: Record<OptionId<"face_shape">, { halfWidth: number; shape: Shape }> 
   long: { halfWidth: 46, shape: { type: "ellipse", cx: 120, cy: 112, rx: 46, ry: 64 } },
 };
 
+/** 顔の形ごとの髪の横幅の倍率。頭の上が角張っていたり広かったりしても、髪が頭を覆うようにする */
+const HAIR_WIDTH: Record<OptionId<"face_shape">, number> = { round: 1.01, oval: 1, square: 1.04, long: 1 };
+
 const HAIR_CAP_TOP = "M64 118 C58 56 92 34 120 34 C148 34 182 56 176 118";
 const HAIR_CAP_EDGE: Record<OptionId<"bangs">, string> = {
   none: " C172 92 154 64 120 64 C86 64 68 92 64 118 Z",
   full: " C176 102 170 88 160 86 L80 86 C70 88 64 102 64 118 Z",
   side: " C174 96 164 72 140 68 C118 70 92 80 80 94 C70 104 66 110 64 118 Z",
 };
-const BUZZ = "M70 110 C66 60 94 42 120 42 C146 42 174 60 170 110 C166 84 150 62 120 62 C90 62 74 84 70 110 Z";
+// 坊主頭。生え際より上を広めに覆い、頭の形で切り抜く（どの顔の形でも頭の輪郭に沿うように）
+const BUZZ = "M40 112 L40 20 L200 20 L200 112 C168 84 150 62 120 62 C90 62 72 84 40 112 Z";
 
 const HAIR_BACK = {
   medium: "M64 100 C60 136 62 160 74 176 L166 176 C178 160 180 136 176 100 Z",
@@ -260,7 +264,8 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   if (p.hairLength === "bald") {
     line("hair", "shine", "M96 66 Q108 58 122 60", 4, { color: WHITE, opacity: 0.7 });
   } else if (p.hairLength === "buzz") {
-    fill("hair", "hair", path(BUZZ), hair, { fillOpacity: 0.9 });
+    // 頭の形で切り抜くので、髪のボリュームでは大きさを変えない
+    hairLayers.delete(fill("hair", "hair", path(BUZZ), hair, { fillOpacity: 0.9, clip: head.shape }));
   } else if (spiky) {
     fill("hairstyle", "hair", path(SPIKY), hair);
   } else {
@@ -396,8 +401,11 @@ export function buildLayers(p: AvatarParams, variant: GeometryVariant = "standar
   }
 
   // 髪のボリュームに合わせて、髪のパーツを少し縮めたり膨らませたりする
-  const [sx, sy] = { flat: [0.95, 0.97], normal: [1, 1], full: [1.08, 1.06] }[p.hairVolume];
-  const volume = sx === 1 ? null : `translate(120 100) scale(${sx} ${sy}) translate(-120 -100)`;
+  // 髪が少ないときは縦だけ縮める（横に縮めると、頭の上の角が髪の外に出る）。顔の形に合わせて、髪が頭を覆うだけの幅にする
+  const [vx, vy] = { flat: [1, 0.95], normal: [1, 1], full: [1.08, 1.06] }[p.hairVolume];
+  const sx = vx * HAIR_WIDTH[p.faceShape];
+  const sy = vy;
+  const volume = sx === 1 && sy === 1 ? null : `translate(120 100) scale(${sx} ${sy}) translate(-120 -100)`;
   // 帽子の後ろから髪がはみ出ないよう、髪を帽子の形とつばより下で切り抜く。
   // 切り抜きの形は髪と一緒に拡大縮小されるので、帽子の輪郭を逆に縮めておく
   if (p.hat !== "none") {
