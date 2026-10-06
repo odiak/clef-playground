@@ -204,7 +204,8 @@ const animeStyle: VectorStyle = {
     return {
       fill: color,
       stroke: layer.strokeWidth > 0 ? (layer.part === "lens" ? ANIME_LINE : darken(color, 0.5)) : "none",
-      strokeWidth: layer.strokeWidth > 0 ? (layer.part === "lens" ? 2.2 : 1.8) : 0,
+      // 太い輪郭線を求めるパーツ（塗り重ねて外側だけ線を残す髪）は、残る半分が他と同じ太さになるよう 2 倍にする
+      strokeWidth: layer.strokeWidth > 0 ? (layer.part === "lens" ? 2.2 : layer.strokeWidth >= 4 ? 3.6 : 1.8) : 0,
       fillOpacity: layer.fillOpacity,
       opacity: layer.opacity,
     };

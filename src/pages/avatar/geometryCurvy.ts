@@ -320,12 +320,19 @@ export function buildCurvyLayers(p: AvatarParams, mode: CurvyMode = "curvy"): La
     const capPoints = vol([[120, 30], ...outer, ...hairline, ...mirror(outer).reverse()]);
     const cap = p.hairTexture === "curly" ? bumpy(capPoints, [120, 100], 6) : capPoints;
     const capShape: Shape = { type: "path", d: spline(cap, true) };
-    fill("hair", "hair", capShape, hair);
+    // アニメ風とアメコミ風は、頭の髪と毛束をひとかたまりにして外側だけに輪郭線を引く。
+    // 先に太い輪郭線つきで全部塗り、上から輪郭線なしで塗り重ねて、内側の線を消す（外側には輪郭線の半分が残る）
+    const merged = anime || comic;
+    if (merged) {
+      fill("hair", "hair", capShape, hair, { strokeWidth: 6 });
+      for (const { center, width } of strands) fill("hairstyle", "hair", brush(center, width), hair, { strokeWidth: 6 });
+    }
+    fill("hair", "hair", capShape, hair, merged ? { strokeWidth: 0 } : {});
     if (comic) {
       // 髪の右側の影
       fill("hair", "shadow", spline([[150, 20], [146, 60], [160, 90], [172, 130], [200, 130], [200, 20]], true), darken(hair, 0.22), { strokeWidth: 0, clip: capShape });
     }
-    for (const { center, width } of strands) fill("hairstyle", "hair", brush(center, width), hair, { strokeWidth: 2.2 });
+    for (const { center, width } of strands) fill("hairstyle", "hair", brush(center, width), hair, { strokeWidth: merged ? 0 : 2.2 });
     // 髪の流れの線
     for (const { center } of strands.slice(comic ? 0 : -3)) {
       line("hairstyle", "hairLine", spline(sampleSpline(center, 4).slice(2, 7)), comic ? 1.3 : 1.5, { color: hairDark, opacity: comic ? 0.8 : 0.6 });
