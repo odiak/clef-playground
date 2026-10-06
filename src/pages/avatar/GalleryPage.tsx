@@ -5,15 +5,25 @@ import { Avatar, AVATAR_STYLES } from "./Avatar";
 import { random } from "./curves";
 import { toAvatarParams } from "./params";
 
+/** 「なし」を選ぶ確率。選択肢から均等に選ぶと、帽子は 3 つのうち 2 つが「かぶっている」になって多すぎるので下げる */
+const NONE_PROBABILITY: Record<string, number> = { hat: 0.8 };
+
 /** 回答をランダムに作る。見た目の確認用。fixed に入っている質問はその回答に固定する */
 function randomAnswers(rand: () => number, fixed: Record<string, string>): AvatarAnswers {
   const answers: Record<string, unknown> = {};
+  const pick = (id: string, options: string[]) => {
+    if (id in NONE_PROBABILITY && options.includes("none")) {
+      if (rand() < NONE_PROBABILITY[id]) return "none";
+      options = options.filter((option) => option !== "none");
+    }
+    return options[Math.floor(rand() * options.length)];
+  };
   for (const [id, question] of Object.entries(AVATAR_QUESTIONS)) {
     if (question.type === "noul") {
       answers[id] = { type: "noul", noul: id in fixed ? (fixed[id] === "true" ? 1 : 0) : rand() };
     } else {
       const options = Object.keys(question.options);
-      const choice = id in fixed ? fixed[id] : options[Math.floor(rand() * options.length)];
+      const choice = id in fixed ? fixed[id] : pick(id, options);
       answers[id] = { type: "choice", choice, probabilities: { [choice]: 1 }, confidence: 1 };
     }
   }
