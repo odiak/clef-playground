@@ -1,18 +1,19 @@
 import { type Ref, type SVGProps, useId, useMemo } from "react";
 import type { AvatarStageId } from "../../../shared/avatar";
+import type { Localized } from "../../../shared/i18n";
 import { buildLayers, PLACEHOLDER_HEAD, type Shape } from "./geometry";
 import type { AvatarParams } from "./params";
 import { type StyleContext, VECTOR_STYLES, type VectorStyle, type VectorStyleId } from "./styles";
 
 export type AvatarStyleId = VectorStyleId;
 
-export const AVATAR_STYLES: { id: AvatarStyleId; label: string }[] = [
-  { id: "pop", label: "ポップ" },
-  { id: "chibi", label: "ちびキャラ" },
-  { id: "minimal", label: "シンプル" },
-  { id: "flat", label: "フラット" },
-  { id: "anime", label: "アニメ" },
-  { id: "comic", label: "アメコミ" },
+export const AVATAR_STYLES: { id: AvatarStyleId; label: Localized }[] = [
+  { id: "pop", label: { ja: "ポップ", en: "Pop" } },
+  { id: "chibi", label: { ja: "ちびキャラ", en: "Chibi" } },
+  { id: "minimal", label: { ja: "シンプル", en: "Simple" } },
+  { id: "flat", label: { ja: "フラット", en: "Flat" } },
+  { id: "anime", label: { ja: "アニメ", en: "Anime" } },
+  { id: "comic", label: { ja: "アメコミ", en: "Comic" } },
 ];
 
 type Props = {

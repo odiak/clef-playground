@@ -1,11 +1,19 @@
 import { EXPRESSION_TO_HAND, EXPRESSIONS, type JudgeResponse } from "../../../shared/janken";
+import { defineMessages, useLang, useMessages } from "../../lib/i18n";
 import { EXPRESSION_EMOJI, EXPRESSION_LABEL, HAND_EMOJI } from "./labels";
 
+const MESSAGES = defineMessages({
+  ja: { title: "Clef の判定", confidence: "確信度", face: "顔が写っている確率" },
+  en: { title: "Clef's judgment", confidence: "Confidence", face: "Face detected" },
+});
+
 export function ProbabilityBars({ judge }: { judge: JudgeResponse }) {
+  const { lang } = useLang();
+  const t = useMessages(MESSAGES);
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="font-black">Clef の判定</h3>
+        <h3 className="font-black">{t.title}</h3>
         <p className="text-xs font-bold text-ink/60">
           {judge.model} · {judge.latencyMs}ms
         </p>
@@ -19,7 +27,7 @@ export function ProbabilityBars({ judge }: { judge: JudgeResponse }) {
           return (
             <li key={expression} className="flex items-center gap-2">
               <span className="w-24 shrink-0 text-sm font-extrabold">
-                {EXPRESSION_EMOJI[expression]} {EXPRESSION_LABEL[expression]}
+                {EXPRESSION_EMOJI[expression]} {EXPRESSION_LABEL[expression][lang]}
               </span>
               <span className="relative h-6 flex-1 overflow-hidden rounded-full border-2 border-ink bg-cf-cream">
                 <span
@@ -40,11 +48,11 @@ export function ProbabilityBars({ judge }: { judge: JudgeResponse }) {
 
       <dl className="grid grid-cols-2 gap-2 text-center text-xs font-bold">
         <div className="rounded-2xl bg-cf-cream px-3 py-2">
-          <dt className="text-ink/60">確信度</dt>
+          <dt className="text-ink/60">{t.confidence}</dt>
           <dd className="text-lg font-black">{Math.round(judge.confidence * 100)}%</dd>
         </div>
         <div className="rounded-2xl bg-cf-cream px-3 py-2">
-          <dt className="text-ink/60">顔が写っている確率</dt>
+          <dt className="text-ink/60">{t.face}</dt>
           <dd className="text-lg font-black">{Math.round(judge.faceProbability * 100)}%</dd>
         </div>
       </dl>

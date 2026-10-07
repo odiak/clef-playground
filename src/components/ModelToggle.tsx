@@ -1,9 +1,16 @@
 import { CLEF_MODELS, type ClefModel } from "../../shared/clef";
+import type { Localized } from "../../shared/i18n";
+import { defineMessages, useLang, useMessages } from "../lib/i18n";
 
-export const MODEL_LABEL: Record<ClefModel, { name: string; note: string }> = {
-  "clef-flash": { name: "Clef flash", note: "9B・はやい" },
-  clef: { name: "Clef", note: "27B・かしこい" },
+export const MODEL_LABEL: Record<ClefModel, { name: string; note: Localized }> = {
+  "clef-flash": { name: "Clef flash", note: { ja: "9B・はやい", en: "9B · fast" } },
+  clef: { name: "Clef", note: { ja: "27B・かしこい", en: "27B · smart" } },
 };
+
+const MESSAGES = defineMessages({
+  ja: { label: "判定に使うモデル" },
+  en: { label: "Model used for judging" },
+});
 
 export function ModelToggle({
   value,
@@ -14,8 +21,10 @@ export function ModelToggle({
   onChange: (model: ClefModel) => void;
   disabled: boolean;
 }) {
+  const { lang } = useLang();
+  const t = useMessages(MESSAGES);
   return (
-    <div role="radiogroup" aria-label="判定に使うモデル" className="grid grid-cols-2 gap-1 rounded-full border-[3px] border-ink bg-white p-1">
+    <div role="radiogroup" aria-label={t.label} className="grid grid-cols-2 gap-1 rounded-full border-[3px] border-ink bg-white p-1">
       {CLEF_MODELS.map((model) => {
         const selected = model === value;
         return (
@@ -32,7 +41,7 @@ export function ModelToggle({
           >
             <span className="block text-sm leading-tight font-black">{MODEL_LABEL[model].name}</span>
             <span className={`block text-[10px] font-bold ${selected ? "text-white/85" : "text-ink/50"}`}>
-              {MODEL_LABEL[model].note}
+              {MODEL_LABEL[model].note[lang]}
             </span>
           </button>
         );

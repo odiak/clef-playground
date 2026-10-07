@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppError } from "../errors";
 
-export class CameraError extends Error {}
-
-function toCameraError(error: unknown): CameraError {
+function toCameraError(error: unknown): AppError {
   if (error instanceof DOMException) {
     switch (error.name) {
       case "NotAllowedError":
-        return new CameraError("カメラの使用が許可されていません。ブラウザの設定でカメラを許可してください");
+        return new AppError("camera_denied");
       case "NotFoundError":
       case "OverconstrainedError":
-        return new CameraError("使えるカメラが見つかりませんでした");
+        return new AppError("camera_not_found");
       case "NotReadableError":
-        return new CameraError("カメラを起動できませんでした。他のアプリがカメラを使っていないか確認してください");
+        return new AppError("camera_busy");
     }
   }
-  return new CameraError("カメラを起動できませんでした");
+  return new AppError("camera_failed");
 }
 
 function isLive(stream: MediaStream): boolean {
@@ -36,7 +35,7 @@ export function useCamera() {
 
   const start = useCallback(async (): Promise<HTMLVideoElement> => {
     const video = videoRef.current;
-    if (!video) throw new CameraError("カメラを起動できませんでした");
+    if (!video) throw new AppError("camera_failed");
 
     // バックグラウンドから戻ったときなどに映像が止まっていることがあるので、生きている場合だけ使い回す
     if (streamRef.current && isLive(streamRef.current)) {
@@ -46,10 +45,10 @@ export function useCamera() {
     stop();
 
     if (!window.isSecureContext) {
-      throw new CameraError("カメラを使うには HTTPS でページを開いてください");
+      throw new AppError("camera_insecure");
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      throw new CameraError("このブラウザはカメラに対応していません");
+      throw new AppError("camera_unsupported");
     }
 
     let stream: MediaStream;

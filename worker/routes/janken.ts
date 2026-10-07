@@ -74,9 +74,6 @@ janken.post("/judge", async (c) => {
     });
   } catch (error) {
     console.error("Clef request failed", error);
-    return c.json<ErrorResponse>(
-      { error: "判定に失敗しました。もう一度お試しください" },
-      502,
-    );
+    return c.json<ErrorResponse>({ error: "clef_failed" }, 502);
   }
 });

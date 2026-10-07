@@ -47,7 +47,7 @@ avatar.post("/analyze", async (c) => {
 
     const { face, ...answers } = response.answers;
     if (face.type !== "noul" || face.noul < FACE_THRESHOLD) {
-      return c.json<ErrorResponse>({ error: "顔が見つかりませんでした。顔が枠に収まるように撮り直してください" }, 422);
+      return c.json<ErrorResponse>({ error: "no_face" }, 422);
     }
 
     return c.json<AnalyzeResponse>({
@@ -57,6 +57,6 @@ avatar.post("/analyze", async (c) => {
     });
   } catch (error) {
     console.error("Clef request failed", error);
-    return c.json<ErrorResponse>({ error: "判定に失敗しました。もう一度お試しください" }, 502);
+    return c.json<ErrorResponse>({ error: "clef_failed" }, 502);
   }
 });

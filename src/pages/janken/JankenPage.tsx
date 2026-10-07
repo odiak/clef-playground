@@ -9,12 +9,14 @@ import {
   type JudgeResponse,
   type Outcome,
 } from "../../../shared/janken";
-import { BackLink } from "../../components/BackLink";
 import { DetailsCard } from "../../components/DetailsCard";
 import { MODEL_LABEL, ModelToggle } from "../../components/ModelToggle";
 import { Notice } from "../../components/Notice";
+import { TopBar } from "../../components/TopBar";
 import { captureSquareFrame } from "../../lib/camera/capture";
 import { useCamera } from "../../lib/camera/useCamera";
+import { errorMessage } from "../../lib/errors";
+import { defineMessages, useLang, useMessages } from "../../lib/i18n";
 import { judgeExpression } from "./api";
 import { EXPRESSION_EMOJI, EXPRESSION_LABEL, HAND_EMOJI, HAND_LABEL, OUTCOME_LABEL } from "./labels";
 import { ProbabilityBars } from "./ProbabilityBars";
@@ -25,12 +27,59 @@ type Phase =
   | { kind: "countdown"; count: number }
   | { kind: "judging"; photo: string; computer: Hand }
   | { kind: "result"; photo: string; computer: Hand; judge: JudgeResponse }
-  | { kind: "error"; message: string; photo?: string; computer?: Hand };
+  | { kind: "error"; error: unknown; photo?: string; computer?: Hand };
 
 // カウントダウン 1 拍の長さ
 const BEAT_MS = 1000;
 // 「1」のあと撮影までの追加の待ち時間。表情を作る反応時間のぶん、少しだけ遅らせる
 const CAPTURE_DELAY_MS = 400;
+
+const MESSAGES = defineMessages({
+  ja: {
+    title: "表情じゃんけん",
+    lead: "顔の表情で手を出そう！",
+    rule: (expression: string, hand: string) => `${expression}は${hand}`,
+    photoAlt: "撮影した写真",
+    starting: "カメラを起動中…",
+    intro: "インカメラで表情を撮影します",
+    introNote: "3・2・1・0 の「0」でパシャッ！",
+    judging: "Clef が判定中…",
+    you: "あなた",
+    computer: "コンピューター",
+    busy: "じゃんけん…",
+    start: "はじめる",
+    again: "もう一回！",
+    noFace: "顔がうまく写っていなかったみたい。もう一度どうぞ！",
+    noExpression: "はっきりした表情に見えなかったみたい。笑顔・驚いた顔・怒った顔のどれかで、もう一度どうぞ！",
+    details: "🔍 モデルと判定の詳細",
+    detailsEmpty: "じゃんけんすると、ここに Clef の判定結果が表示されます",
+    privacy: "撮影した写真は判定のためだけに送信され、保存されません。",
+    score: { win: "かち", draw: "あいこ", lose: "まけ" },
+    undecided: "判定できず 🙈",
+  },
+  en: {
+    title: "Rock Paper Faces",
+    lead: "Throw your hand with your face!",
+    rule: (expression, hand) => `${expression} = ${hand}`,
+    photoAlt: "Your photo",
+    starting: "Starting the camera…",
+    intro: "Your front camera will capture your expression",
+    introNote: "3, 2, 1, 0 — snap on \"0\"!",
+    judging: "Clef is judging…",
+    you: "You",
+    computer: "Computer",
+    busy: "Rock, paper…",
+    start: "Start",
+    again: "Again!",
+    noFace: "Your face wasn't clearly visible. Try again!",
+    noExpression: "Couldn't see a clear expression. Try again with a smile, a surprised face, or an angry face!",
+    details: "🔍 Model & judgment details",
+    detailsEmpty: "Play a round to see Clef's judgment here",
+    privacy: "Your photo is sent only for judging and is never stored.",
+    score: { win: "Win", draw: "Draw", lose: "Lose" },
+    undecided: "Can't tell 🙈",
+  },
+});
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -39,6 +88,8 @@ function randomHand(): Hand {
 }
 
 export function JankenPage() {
+  const { lang } = useLang();
+  const t = useMessages(MESSAGES);
   const camera = useCamera();
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [model, setModel] = useState<ClefModel>("clef-flash");
@@ -78,7 +129,7 @@ export function JankenPage() {
     try {
       video = await camera.start();
     } catch (error) {
-      if (!isCancelled()) setPhase({ kind: "error", message: (error as Error).message });
+      if (!isCancelled()) setPhase({ kind: "error", error });
       return;
     }
 
@@ -95,7 +146,7 @@ export function JankenPage() {
       photo = captureSquareFrame(video);
     } catch (error) {
       camera.stop();
-      setPhase({ kind: "error", message: (error as Error).message });
+      setPhase({ kind: "error", error });
       return;
     }
     const computer = randomHand();
@@ -110,7 +161,7 @@ export function JankenPage() {
         setScore((prev) => ({ ...prev, [outcome]: prev[outcome] + 1 }));
       }
     } catch (error) {
-      if (!isCancelled()) setPhase({ kind: "error", message: (error as Error).message, photo, computer });
+      if (!isCancelled()) setPhase({ kind: "error", error, photo, computer });
     }
   };
 
@@ -122,14 +173,14 @@ export function JankenPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-4">
-      <title>表情じゃんけん | Clef Playground</title>
-      <BackLink />
+      <title>{`${t.title} | Clef Playground`}</title>
+      <TopBar back />
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black whitespace-nowrap">表情じゃんけん</h1>
-          <p className="text-xs font-bold text-ink/70">顔の表情で手を出そう！</p>
+          <h1 className="text-2xl font-black whitespace-nowrap">{t.title}</h1>
+          <p className="text-xs font-bold text-ink/70">{t.lead}</p>
         </div>
-        <Scoreboard score={score} />
+        <Scoreboard score={score} labels={t.score} />
       </div>
 
       <ul className="grid grid-cols-3 gap-2 text-center">
@@ -141,7 +192,7 @@ export function JankenPage() {
                 {EXPRESSION_EMOJI[expression]}→{HAND_EMOJI[hand]}
               </div>
               <div className="text-[10px] font-extrabold text-ink/70">
-                {EXPRESSION_LABEL[expression]}は{HAND_LABEL[hand]}
+                {t.rule(EXPRESSION_LABEL[expression][lang], HAND_LABEL[hand][lang])}
               </div>
             </li>
           );
@@ -157,15 +208,15 @@ export function JankenPage() {
           autoPlay
           className={`absolute inset-0 size-full -scale-x-100 object-cover ${camera.isActive && !photo ? "" : "invisible"}`}
         />
-        {photo && <img src={photo} alt="撮影した写真" className="absolute inset-0 size-full object-cover" />}
+        {photo && <img src={photo} alt={t.photoAlt} className="absolute inset-0 size-full object-cover" />}
 
         {!camera.isActive && !photo && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-cf-peach p-6 text-center">
             <span className="animate-float text-7xl">{phase.kind === "starting" ? "📷" : "🤳"}</span>
             <p className="font-black">
-              {phase.kind === "starting" ? "カメラを起動中…" : "インカメラで表情を撮影します"}
+              {phase.kind === "starting" ? t.starting : t.intro}
             </p>
-            <p className="text-xs font-bold text-ink/60">3・2・1・0 の「0」でパシャッ！</p>
+            <p className="text-xs font-bold text-ink/60">{t.introNote}</p>
           </div>
         )}
 
@@ -180,7 +231,7 @@ export function JankenPage() {
             <div className="pointer-events-none absolute inset-0 animate-flash bg-white" />
             <CountNumber className="animate-zero">0</CountNumber>
             <StageBadge>
-              <span className="inline-block animate-spin">⏳</span> Clef が判定中…
+              <span className="inline-block animate-spin">⏳</span> {t.judging}
             </StageBadge>
           </>
         )}
@@ -189,17 +240,19 @@ export function JankenPage() {
           <>
             {/* 顔（特に目と口）を隠さないよう、上下だけ暗くしてステッカーは上端に置く */}
             <div className="absolute inset-0 bg-linear-to-b from-ink/35 via-transparent via-40% to-ink/25" />
-            <ResultSticker outcome={outcome} />
+            <ResultSticker outcome={outcome} undecided={t.undecided} />
           </>
         )}
 
         {(phase.kind === "countdown" || photo) && (
           <div className="absolute inset-x-3 bottom-3 flex items-end justify-between">
             <HandBubble
-              title="あなた"
+              title={t.you}
               highlight={outcome === "win"}
               sub={
-                judge?.hand ? `${EXPRESSION_EMOJI[judge.expression]} ${EXPRESSION_LABEL[judge.expression]}` : undefined
+                judge?.hand
+                  ? `${EXPRESSION_EMOJI[judge.expression]} ${EXPRESSION_LABEL[judge.expression][lang]}`
+                  : undefined
               }
             >
               {phase.kind === "countdown" ? (
@@ -216,9 +269,9 @@ export function JankenPage() {
               VS
             </span>
             <HandBubble
-              title="コンピューター"
+              title={t.computer}
               highlight={outcome === "lose"}
-              sub={computer ? HAND_LABEL[computer] : undefined}
+              sub={computer ? HAND_LABEL[computer][lang] : undefined}
             >
               {computer ? (
                 <span key={`${computer}-${photo}`} className="inline-block animate-pop-in">
@@ -234,44 +287,37 @@ export function JankenPage() {
 
       <div className="flex justify-center pt-1">
         <button type="button" className="btn-pop min-w-60" onClick={play} disabled={isBusy}>
-          {isBusy ? "じゃんけん…" : phase.kind === "idle" ? "はじめる" : "もう一回！"}
+          {isBusy ? t.busy : phase.kind === "idle" ? t.start : t.again}
         </button>
       </div>
 
       {phase.kind === "error" && (
-        <Notice>😵 {phase.message}</Notice>
+        <Notice>😵 {errorMessage(phase.error, lang)}</Notice>
       )}
       {judge && !judge.hand && (
-        <Notice>
-          {judge.faceProbability < 0.5
-            ? "顔がうまく写っていなかったみたい。"
-            : "はっきりした表情に見えなかったみたい。笑顔・驚いた顔・怒った顔のどれかで、"}
-          もう一度どうぞ！
-        </Notice>
+        <Notice>{judge.faceProbability < 0.5 ? t.noFace : t.noExpression}</Notice>
       )}
 
-      <DetailsCard title="🔍 モデルと判定の詳細" aside={MODEL_LABEL[model].name}>
+      <DetailsCard title={t.details} aside={MODEL_LABEL[model].name}>
         <ModelToggle value={model} onChange={setModel} disabled={isBusy} />
         {judge ? (
           <ProbabilityBars judge={judge} />
         ) : (
-          <p className="text-center text-xs font-bold text-ink/50">じゃんけんすると、ここに Clef の判定結果が表示されます</p>
+          <p className="text-center text-xs font-bold text-ink/50">{t.detailsEmpty}</p>
         )}
       </DetailsCard>
 
-      <p className="text-center text-xs font-bold text-ink/50">
-        撮影した写真は判定のためだけに送信され、保存されません。
-      </p>
+      <p className="text-center text-xs font-bold text-ink/50">{t.privacy}</p>
     </div>
   );
 }
 
-function Scoreboard({ score }: { score: Record<Outcome, number> }) {
+function Scoreboard({ score, labels }: { score: Record<Outcome, number>; labels: Record<Outcome, string> }) {
   return (
     <dl className="flex shrink-0 overflow-hidden rounded-2xl border-2 border-ink bg-white text-center text-[10px] font-extrabold">
       {(["win", "draw", "lose"] as const).map((key) => (
         <div key={key} className="border-ink px-2 py-0.5 not-last:border-r-2">
-          <dt className="text-ink/60">{{ win: "かち", draw: "あいこ", lose: "まけ" }[key]}</dt>
+          <dt className="text-ink/60">{labels[key]}</dt>
           <dd className="text-base leading-tight font-black tabular-nums">{score[key]}</dd>
         </div>
       ))}
@@ -334,7 +380,8 @@ function ShufflingHand() {
   return <span className="inline-block">{HAND_EMOJI[HANDS[index]]}</span>;
 }
 
-function ResultSticker({ outcome }: { outcome: Outcome | undefined }) {
+function ResultSticker({ outcome, undecided }: { outcome: Outcome | undefined; undecided: string }) {
+  const { lang } = useLang();
   const styles: Record<Outcome, string> = {
     win: "bg-cf-orange text-white",
     draw: "bg-cf-yellow text-ink",
@@ -350,7 +397,7 @@ function ResultSticker({ outcome }: { outcome: Outcome | undefined }) {
             outcome ? styles[outcome] : "bg-white text-ink"
           }`}
         >
-          {outcome ? `${OUTCOME_LABEL[outcome]} ${emoji[outcome]}` : "判定できず 🙈"}
+          {outcome ? `${OUTCOME_LABEL[outcome][lang]} ${emoji[outcome]}` : undecided}
         </p>
       </div>
     </div>

@@ -29,6 +29,15 @@ Workers AI のバインディングはローカル開発でもリモートの Cl
 
 `wrangler.jsonc` を変更したら `npm run cf-typegen` で `worker-configuration.d.ts` を再生成する。
 
+## 多言語対応
+
+画面は日本語と英語に対応している。
+
+- 言語はブラウザの言語設定から自動で選び（日本語と英語のうち優先度が高いほう、どちらもなければ英語）、ページ右上の切り替えで選んだ言語は localStorage に保存する（`src/lib/i18n.tsx`）
+- 文言は使う場所の近くに `defineMessages({ ja: {...}, en: {...} })` でまとめて書く。アバターの質問や選択肢の表示名は `shared/avatar.ts` の `label: { ja, en }`
+- API のエラーは文言ではなくエラーの種類（`shared/api.ts` の `ErrorCode`）を返し、画面で言語に合わせた文言にする（`src/lib/errors.ts`）
+- ページの title と OGP タグは、Worker が `Accept-Language` を見て出し分ける。言語設定を送ってこないクローラーには日本語を返す（`worker/pages.ts`）。OGP 画像は日本語のみ
+
 ## アバターの見た目の確認
 
 開発サーバーで `/avatar/gallery` を開くと、ランダムな回答で作ったアバターを全スタイルで並べて確認できる（本番には含めない）。

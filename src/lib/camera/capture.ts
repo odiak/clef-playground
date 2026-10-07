@@ -1,10 +1,12 @@
+import { AppError } from "../errors";
+
 /**
  * video の中央を正方形に切り抜き、プレビューと同じく左右反転した JPEG の data URL を返す。
  * Clef に送るので、判定に十分かつ軽いサイズに縮小する。
  */
 export function captureSquareFrame(video: HTMLVideoElement, size = 512): string {
   const { videoWidth: width, videoHeight: height } = video;
-  if (width === 0 || height === 0) throw new Error("カメラの映像を取得できませんでした。もう一度どうぞ");
+  if (width === 0 || height === 0) throw new AppError("capture_failed");
   const side = Math.min(width, height);
   const sx = (width - side) / 2;
   const sy = (height - side) / 2;

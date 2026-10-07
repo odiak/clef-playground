@@ -1,8 +1,9 @@
 import type { Context } from "hono";
+import { type Lang, type Localized, pickLang } from "../shared/i18n";
 
 type PageMeta = {
-  title: string;
-  description: string;
+  title: Localized;
+  description: Localized;
   /** public/ 以下の OGP 画像のパス */
   image: string;
 };
@@ -13,20 +14,27 @@ const SITE_NAME = "Clef Playground";
 // ページごとの title と OGP タグを Worker で index.html に差し込む
 export const PAGES: Record<string, PageMeta> = {
   "/": {
-    title: SITE_NAME,
-    description: "Cloudflare Workers AI の判断モデル Clef で遊ぶデモ集",
+    title: { ja: SITE_NAME, en: SITE_NAME },
+    description: {
+      ja: "Cloudflare Workers AI の判断モデル Clef で遊ぶデモ集",
+      en: "Demos to play with Clef, the judgment model on Cloudflare Workers AI",
+    },
     image: "/ogp/janken.png",
   },
   "/janken": {
-    title: `表情じゃんけん | ${SITE_NAME}`,
-    description:
-      "笑顔・驚いた顔・怒った顔でコンピューターとじゃんけん！インカメラで撮った表情を Cloudflare Workers AI の Clef が判定します。",
+    title: { ja: `表情じゃんけん | ${SITE_NAME}`, en: `Rock Paper Faces | ${SITE_NAME}` },
+    description: {
+      ja: "笑顔・驚いた顔・怒った顔でコンピューターとじゃんけん！インカメラで撮った表情を Cloudflare Workers AI の Clef が判定します。",
+      en: "Play rock-paper-scissors against the computer with a smile, a surprised face, or an angry face! Clef on Cloudflare Workers AI judges the expression from your front camera.",
+    },
     image: "/ogp/janken.png",
   },
   "/avatar": {
-    title: `アバターメーカー | ${SITE_NAME}`,
-    description:
-      "顔の写真について Clef が 31 個の質問に答え、その答えからあなたに似たアバターを組み立てます。Cloudflare Workers AI の Clef を使ったデモ。",
+    title: { ja: `アバターメーカー | ${SITE_NAME}`, en: `Avatar Maker | ${SITE_NAME}` },
+    description: {
+      ja: "顔の写真について Clef が 31 個の質問に答え、その答えからあなたに似たアバターを組み立てます。Cloudflare Workers AI の Clef を使ったデモ。",
+      en: "Clef answers 31 questions about a photo of your face, and those answers become an avatar that looks like you. A demo of Clef on Cloudflare Workers AI.",
+    },
     image: "/ogp/avatar.png",
   },
 };
@@ -35,14 +43,36 @@ function escapeAttribute(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
 }
 
-function metaTags(meta: PageMeta, url: URL): string {
+const OG_LOCALE: Record<Lang, string> = { ja: "ja_JP", en: "en_US" };
+
+/**
+ * ブラウザの言語設定（Accept-Language）からページの言語を選ぶ。
+ * 言語設定を送ってこないクローラーには、これまでどおり日本語を返す
+ */
+function requestLang(header: string | undefined): Lang {
+  const preferred = (header ?? "")
+    .split(",")
+    .map((part) => {
+      const [tag, ...params] = part.trim().split(";");
+      const q = params.find((param) => param.trim().startsWith("q="));
+      return { tag: tag.trim(), q: q ? Number(q.trim().slice(2)) : 1 };
+    })
+    // 「*」は言語の指定がないのと同じに扱う
+    .filter(({ tag }) => tag !== "" && tag !== "*")
+    .sort((a, b) => b.q - a.q)
+    .map(({ tag }) => tag);
+  return preferred.length > 0 ? pickLang(preferred) : "ja";
+}
+
+function metaTags(meta: PageMeta, lang: Lang, url: URL): string {
   const imageUrl = new URL(meta.image, url.origin).toString();
   const properties: [string, string][] = [
     ["og:type", "website"],
     ["og:site_name", SITE_NAME],
-    ["og:locale", "ja_JP"],
-    ["og:title", meta.title],
-    ["og:description", meta.description],
+    ["og:locale", OG_LOCALE[lang]],
+    ["og:locale:alternate", OG_LOCALE[lang === "ja" ? "en" : "ja"]],
+    ["og:title", meta.title[lang]],
+    ["og:description", meta.description[lang]],
     ["og:url", new URL(url.pathname, url.origin).toString()],
     ["og:image", imageUrl],
     ["og:image:width", "1200"],
@@ -60,23 +90,33 @@ function metaTags(meta: PageMeta, url: URL): string {
 
 export async function renderPage(c: Context<{ Bindings: Env }>, meta: PageMeta): Promise<Response> {
   const url = new URL(c.req.url);
+  const lang = requestLang(c.req.header("accept-language"));
   const response = await c.env.ASSETS.fetch(new URL("/", url));
 
-  return new HTMLRewriter()
+  const transformed = new HTMLRewriter()
+    .on("html", {
+      element(element) {
+        element.setAttribute("lang", lang);
+      },
+    })
     .on("title", {
       element(element) {
-        element.setInnerContent(meta.title);
+        element.setInnerContent(meta.title[lang]);
       },
     })
     .on('meta[name="description"]', {
       element(element) {
-        element.setAttribute("content", meta.description);
+        element.setAttribute("content", meta.description[lang]);
       },
     })
     .on("head", {
       element(element) {
-        element.append(metaTags(meta, url), { html: true });
+        element.append(metaTags(meta, lang, url), { html: true });
       },
     })
     .transform(response);
+  // 言語設定によって中身が変わるので、キャッシュが言語ごとに分かれるようにする
+  const headers = new Headers(transformed.headers);
+  headers.append("vary", "Accept-Language");
+  return new Response(transformed.body, { status: transformed.status, headers });
 }

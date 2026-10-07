@@ -13,7 +13,7 @@ export type ImageRequestEnv = {
 
 export const imageBodyLimit = bodyLimit({
   maxSize: 2 * 1024 * 1024,
-  onError: (c) => c.json<ErrorResponse>({ error: "画像が大きすぎます" }, 413),
+  onError: (c) => c.json<ErrorResponse>({ error: "image_too_large" }, 413),
 });
 
 /**
@@ -25,7 +25,7 @@ export function imageRequest(getRateLimiter: (env: Env) => RateLimit) {
     const ip = c.req.header("cf-connecting-ip") ?? "unknown";
     const { success } = await getRateLimiter(c.env).limit({ key: ip });
     if (!success) {
-      return c.json<ErrorResponse>({ error: "リクエストが多すぎます。少し休憩してからもう一度どうぞ" }, 429);
+      return c.json<ErrorResponse>({ error: "rate_limited" }, 429);
     }
 
     const body = await c.req.json<unknown>().catch(() => null);
@@ -38,7 +38,7 @@ export function imageRequest(getRateLimiter: (env: Env) => RateLimit) {
       !("model" in body) ||
       !isClefModel(body.model)
     ) {
-      return c.json<ErrorResponse>({ error: "リクエストが不正です" }, 400);
+      return c.json<ErrorResponse>({ error: "invalid_request" }, 400);
     }
 
     c.set("image", body.image);
