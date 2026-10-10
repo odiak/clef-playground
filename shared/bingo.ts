@@ -17,7 +17,6 @@ export type BingoTheme = {
   items: BingoItem[];
 };
 
-/** 表示名の長い単語は、マスに収まるよう \u200b（ゼロ幅スペース）で折り返す位置を示しておく */
 function item(id: string, emoji: string, ja: string, en: string, prompt: string): BingoItem {
   return { id, emoji, label: { ja, en }, prompt };
 }
@@ -85,7 +84,7 @@ export const BINGO_THEMES: BingoTheme[] = [
       item("soap", "🧼", "石けん", "Soap", "a bar of soap or a bottle of hand soap"),
       item("shampoo", "🧴", "シャンプー", "Shampoo", "a bottle of shampoo, conditioner, or body wash"),
       item("towel", "🧺", "タオル", "Towel", "a towel"),
-      item("toiletpaper", "🧻", "トイレット\u200bペーパー", "Toilet Paper", "a roll of toilet paper"),
+      item("toiletpaper", "🧻", "トイレットペーパー", "Toilet Paper", "a roll of toilet paper"),
       item("tissue", "🤧", "ティッシュ", "Tissues", "a box of tissues or tissue paper"),
       item("hairdryer", "💨", "ドライヤー", "Hair Dryer", "a hair dryer"),
       item("nailclipper", "💅", "爪切り", "Nail Clipper", "nail clippers"),
@@ -232,7 +231,7 @@ export const BINGO_THEMES: BingoTheme[] = [
       item("bookmark", "🔖", "しおり", "Bookmark", "a bookmark"),
       item("calendar", "📅", "カレンダー", "Calendar", "a calendar"),
       item("calculator", "🧮", "電卓", "Calculator", "a calculator"),
-      item("whiteboard", "⬜", "ホワイト\u200bボード", "Whiteboard", "a whiteboard"),
+      item("whiteboard", "⬜", "ホワイトボード", "Whiteboard", "a whiteboard"),
       item("tapemeasure", "📏", "メジャー", "Tape Measure", "a tape measure"),
       // 機器
       item("keyboard", "⌨️", "キーボード", "Keyboard", "a computer keyboard"),
@@ -303,7 +302,7 @@ export const BINGO_THEMES: BingoTheme[] = [
       item("bicycle", "🚲", "自転車", "Bicycle", "a bicycle"),
       item("motorcycle", "🛵", "バイク", "Motorcycle", "a motorcycle or scooter"),
       item("tire", "🛞", "タイヤ", "Tire", "a tire or wheel"),
-      item("plate", "🔢", "ナンバー\u200bプレート", "License Plate", "a vehicle license plate"),
+      item("plate", "🔢", "ナンバープレート", "License Plate", "a vehicle license plate"),
       item("cart", "🛒", "カート", "Cart", "a shopping cart or trolley"),
       // 道路
       item("signal", "🚦", "信号機", "Traffic Light", "a traffic light"),

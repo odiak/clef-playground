@@ -22,22 +22,6 @@ export function BingoCard({ game }: { game: BingoGame }) {
   );
 }
 
-/** 折り返さずに並べたい一続きの文字の幅を、全角 1 文字を 1 としてざっくり見積もる */
-function longestRunWidth(label: string): number {
-  return Math.max(
-    ...label.split(/[\s\u200b]+/).map((run) =>
-      [...run].reduce((width, char) => width + (/[\u3000-\u9fff\uff00-\uffef]/.test(char) ? 1 : 0.58), 0),
-    ),
-  );
-}
-
-/** マスの大きさと表示名の長さから文字の大きさを決める。長い名前は少し小さくして 1 行に収める */
-function labelSize(label: string, isLarge: boolean): string {
-  const width = longestRunWidth(label);
-  if (isLarge) return width >= 7.5 ? "text-[11px]" : width >= 6.5 ? "text-xs" : "text-sm";
-  return width >= 6.5 ? "text-[7px] sm:text-[9px]" : width >= 5.5 ? "text-[8px] sm:text-[10px]" : "text-[9px] sm:text-[11px]";
-}
-
 function Cell({
   cell,
   label,
@@ -64,7 +48,7 @@ function Cell({
   }
 
   const name = (
-    <span className={`leading-tight font-extrabold break-words [word-break:keep-all] ${labelSize(label.label[lang], isLarge)}`}>
+    <span className={`leading-tight font-extrabold break-words ${isLarge ? "text-sm" : "text-[9px] sm:text-[11px]"}`}>
       {label.label[lang]}
     </span>
   );
