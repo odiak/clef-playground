@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   BINGO_SIZES,
+  BINGO_THEMES,
   type BingoItem,
   type BingoJudgeResponse,
   type BingoSize,
@@ -30,6 +31,7 @@ import {
   remainingItemIds,
   saveGame,
   saveSize,
+  shuffle,
 } from "./game";
 
 type Shot =
@@ -50,16 +52,18 @@ const MESSAGES = defineMessages({
     title: "写真ビンゴ",
     lead: "お題を探して撮影！Clef が認めたらマスに穴が空くよ",
     howTo: [
-      "テーマに沿ったお題がカードに並びます",
+      "選んだテーマのお題がカードに並びます",
       "見つけたらカメラで撮影。1 枚に何個写ってもOK",
       "Clef が認めたらマスに穴が空きます",
       "縦・横・斜めのどれかが揃えばビンゴ！",
     ],
+    themeLabel: "テーマ",
+    themeNote: "みんなで遊ぶときは、同じテーマを選んで競争しよう！",
+    itemCount: (count: number) => `お題 ${count} 種`,
     sizeLabel: "カードの大きさ",
     sizes: { 3: { name: "3×3", note: "サクッと 9 マス" }, 5: { name: "5×5", note: "じっくり 25 マス" } },
     start: "はじめる",
-    theme: "テーマ",
-    changeTheme: "🔄 テーマを変える",
+    reshuffle: "🔄 カードを引き直す",
     elapsed: "経過時間",
     shots: "撮影",
     shotCount: (count: number) => `${count} 枚`,
@@ -94,16 +98,18 @@ const MESSAGES = defineMessages({
     title: "Photo Bingo",
     lead: "Find things and snap them! Clef punches the square when it agrees",
     howTo: [
-      "Your card is filled with things to find, based on a theme",
+      "Your card is filled with things to find from the theme you pick",
       "Found one? Take a photo. Several in one shot is fine too",
       "When Clef recognizes it, the square gets punched",
       "Complete a row, column, or diagonal for BINGO!",
     ],
+    themeLabel: "Theme",
+    themeNote: "Playing with friends? Pick the same theme and race each other!",
+    itemCount: (count) => `${count} things`,
     sizeLabel: "Card size",
     sizes: { 3: { name: "3×3", note: "Quick · 9 squares" }, 5: { name: "5×5", note: "Classic · 25 squares" } },
     start: "Start",
-    theme: "Theme",
-    changeTheme: "🔄 Change theme",
+    reshuffle: "🔄 New card",
     elapsed: "Time",
     shots: "Photos",
     shotCount: (count) => `${count}`,
@@ -191,17 +197,18 @@ export function BingoPage() {
   const hasPunched = game?.cells.some((cell) => cell.itemId !== null && isOpen(cell)) ?? false;
   const isJudging = shot.kind === "judging";
 
-  const deal = (nextSize: BingoSize) => {
+  const deal = (nextSize: BingoSize, nextTheme: BingoTheme) => {
     runIdRef.current++;
     setSize(nextSize);
     saveSize(nextSize);
-    setGame(createGame(nextSize));
+    setGame(createGame(nextSize, nextTheme));
     setShot({ kind: "idle" });
   };
 
-  const changeTheme = () => {
-    if (!game) return;
-    setGame(createGame(game.size, game.themeId));
+  // 穴が空く前なら、同じテーマでお題を選び直せる
+  const reshuffle = () => {
+    if (!game || !theme) return;
+    setGame(createGame(game.size, theme));
     if (shot.kind === "result" || shot.kind === "error") setShot({ kind: camera.isActive ? "live" : "idle" });
   };
 
@@ -328,8 +335,8 @@ export function BingoPage() {
 
               <div className="flex justify-center gap-4 text-xs font-extrabold text-ink/50">
                 {!hasPunched && (
-                  <button type="button" onClick={changeTheme} disabled={isJudging} className="underline underline-offset-2 hover:text-cf-orange disabled:opacity-50">
-                    {t.changeTheme}
+                  <button type="button" onClick={reshuffle} disabled={isJudging} className="underline underline-offset-2 hover:text-cf-orange disabled:opacity-50">
+                    {t.reshuffle}
                   </button>
                 )}
                 <button type="button" onClick={confirmGiveUp} disabled={isJudging} className="underline underline-offset-2 hover:text-cf-orange disabled:opacity-50">
@@ -357,8 +364,20 @@ export function BingoPage() {
   );
 }
 
-function Setup({ size, onDeal, t }: { size: BingoSize; onDeal: (size: BingoSize) => void; t: Messages }) {
+function Setup({
+  size,
+  onDeal,
+  t,
+}: {
+  size: BingoSize;
+  onDeal: (size: BingoSize, theme: BingoTheme) => void;
+  t: Messages;
+}) {
+  const { lang } = useLang();
   const [selected, setSelected] = useState(size);
+  // どのテーマも選ばれやすいよう、並び順と最初に選ばれているテーマはランダムにする
+  const [themes] = useState(() => shuffle(BINGO_THEMES));
+  const [selectedTheme, setSelectedTheme] = useState(themes[0]);
   return (
     <div className="card-pop space-y-5 p-5">
       <ol className="space-y-2">
@@ -371,6 +390,34 @@ function Setup({ size, onDeal, t }: { size: BingoSize; onDeal: (size: BingoSize)
           </li>
         ))}
       </ol>
+
+      <div className="space-y-2">
+        <p className="text-center text-xs font-extrabold text-ink/60">{t.themeLabel}</p>
+        <div role="radiogroup" aria-label={t.themeLabel} className="grid grid-cols-2 gap-2">
+          {themes.map((theme) => {
+            const isSelected = theme.id === selectedTheme.id;
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                onClick={() => setSelectedTheme(theme)}
+                className={`flex flex-col items-center rounded-2xl border-[3px] border-ink px-2 py-2 text-center transition-colors ${
+                  isSelected ? "bg-cf-orange text-white" : "bg-white hover:bg-cf-cream"
+                }`}
+              >
+                <span className="text-3xl">{theme.emoji}</span>
+                <span className="mt-1 text-sm leading-tight font-black">{theme.label[lang]}</span>
+                <span className={`text-[10px] font-bold ${isSelected ? "text-white/85" : "text-ink/50"}`}>
+                  {t.itemCount(theme.items.length)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-center text-[11px] font-bold text-ink/60">{t.themeNote}</p>
+      </div>
 
       <div className="space-y-2">
         <p className="text-center text-xs font-extrabold text-ink/60">{t.sizeLabel}</p>
@@ -397,8 +444,8 @@ function Setup({ size, onDeal, t }: { size: BingoSize; onDeal: (size: BingoSize)
       </div>
 
       <div className="flex justify-center">
-        <button type="button" className="btn-pop min-w-60" onClick={() => onDeal(selected)}>
-          🎲 {t.start}
+        <button type="button" className="btn-pop min-w-60" onClick={() => onDeal(selected, selectedTheme)}>
+          {t.start}
         </button>
       </div>
     </div>

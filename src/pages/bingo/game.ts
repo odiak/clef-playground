@@ -1,4 +1,4 @@
-import { BINGO_SIZES, BINGO_THEMES, type BingoSize, findItem, findTheme } from "../../../shared/bingo";
+import { BINGO_SIZES, type BingoSize, type BingoTheme, findItem, findTheme } from "../../../shared/bingo";
 
 export type BingoCell = {
   /** null は 5x5 の中央の FREE */
@@ -22,7 +22,7 @@ export type BingoGame = {
   result?: "bingo" | "gaveUp";
 };
 
-function shuffle<T>(values: readonly T[]): T[] {
+export function shuffle<T>(values: readonly T[]): T[] {
   const result = [...values];
   for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -31,10 +31,8 @@ function shuffle<T>(values: readonly T[]): T[] {
   return result;
 }
 
-/** テーマをランダムに選んでカードを配る。引き直しのときは今のテーマを除く */
-export function createGame(size: BingoSize, excludeThemeId?: string): BingoGame {
-  const candidates = BINGO_THEMES.filter((theme) => theme.id !== excludeThemeId);
-  const theme = candidates[Math.floor(Math.random() * candidates.length)];
+/** テーマのお題からランダムに選んでカードを配る */
+export function createGame(size: BingoSize, theme: BingoTheme): BingoGame {
   const hasFree = size === 5;
   const count = size * size - (hasFree ? 1 : 0);
   const itemIds: (string | null)[] = shuffle(theme.items.map((item) => item.id)).slice(0, count);
