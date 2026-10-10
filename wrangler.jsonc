@@ -9,7 +9,7 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     // ページごとの OGP タグを差し込むため、ページの HTML も Worker を通す
-    "run_worker_first": ["/api/*", "/", "/janken", "/avatar"]
+    "run_worker_first": ["/api/*", "/", "/janken", "/avatar", "/bingo"]
   },
   "ai": {
     "binding": "AI",
@@ -26,6 +26,11 @@
       "name": "AVATAR_RATE_LIMITER",
       "namespace_id": "1002",
       "simple": { "limit": 10, "period": 60 }
+    },
+    {
+      "name": "BINGO_RATE_LIMITER",
+      "namespace_id": "1003",
+      "simple": { "limit": 20, "period": 60 }
     }
   ]
 }

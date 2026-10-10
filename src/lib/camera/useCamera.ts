@@ -20,8 +20,8 @@ function isLive(stream: MediaStream): boolean {
   return stream.getVideoTracks().some((track) => track.readyState === "live" && track.enabled && !track.muted);
 }
 
-/** インカメラの映像を video 要素に流す */
-export function useCamera() {
+/** カメラの映像を video 要素に流す。既定はインカメラで、"environment" なら外カメラ */
+export function useCamera(facingMode: "user" | "environment" = "user") {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [isActive, setIsActive] = useState(false);
@@ -55,7 +55,7 @@ export function useCamera() {
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "user",
+          facingMode,
           width: { ideal: 1280 },
           height: { ideal: 1280 },
         },
@@ -78,7 +78,7 @@ export function useCamera() {
     await video.play();
     setIsActive(true);
     return video;
-  }, [stop]);
+  }, [stop, facingMode]);
 
   // バックグラウンドに回ると映像が止まることがあるので、カメラを解放する。次に使うときに起動し直す
   useEffect(() => {

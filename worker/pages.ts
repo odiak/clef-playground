@@ -37,6 +37,14 @@ export const PAGES: Record<string, PageMeta> = {
     },
     image: "/ogp/avatar.png",
   },
+  "/bingo": {
+    title: { ja: `写真ビンゴ | ${SITE_NAME}`, en: `Photo Bingo | ${SITE_NAME}` },
+    description: {
+      ja: "カードに並んだお題を探して撮影し、Clef が認めたらマスに穴が空く！縦・横・斜めに揃えばビンゴ。Cloudflare Workers AI の Clef を使ったデモ。",
+      en: "Find the things on your card and snap a photo. When Clef recognizes one, the square is punched! Get a line for BINGO. A demo of Clef on Cloudflare Workers AI.",
+    },
+    image: "/ogp/bingo.png",
+  },
 };
 
 function escapeAttribute(value: string): string {

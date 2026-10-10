@@ -30,6 +30,15 @@ const DEMOS: Demo[] = [
       en: "Clef answers 31 questions about a photo of your face, and those answers become an avatar that looks like you.",
     },
   },
+  {
+    path: "/bingo",
+    emoji: "📸🎯",
+    title: { ja: "写真ビンゴ", en: "Photo Bingo" },
+    description: {
+      ja: "カードに並んだお題を身の回りで探して撮影。Clef が認めたらマスに穴が空き、縦・横・斜めに揃えばビンゴ！",
+      en: "Hunt for the things on your card and snap them. When Clef recognizes one, the square is punched. Get a line for BINGO!",
+    },
+  },
 ];
 
 const MESSAGES = defineMessages({

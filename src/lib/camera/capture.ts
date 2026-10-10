@@ -1,10 +1,10 @@
 import { AppError } from "../errors";
 
 /**
- * video の中央を正方形に切り抜き、プレビューと同じく左右反転した JPEG の data URL を返す。
+ * video の中央を正方形に切り抜き、JPEG の data URL を返す。インカメラのときはプレビューと同じく左右反転する。
  * Clef に送るので、判定に十分かつ軽いサイズに縮小する。
  */
-export function captureSquareFrame(video: HTMLVideoElement, size = 512): string {
+export function captureSquareFrame(video: HTMLVideoElement, size = 512, mirror = true): string {
   const { videoWidth: width, videoHeight: height } = video;
   if (width === 0 || height === 0) throw new AppError("capture_failed");
   const side = Math.min(width, height);
@@ -17,8 +17,10 @@ export function captureSquareFrame(video: HTMLVideoElement, size = 512): string 
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas 2D is not supported");
 
-  context.translate(size, 0);
-  context.scale(-1, 1);
+  if (mirror) {
+    context.translate(size, 0);
+    context.scale(-1, 1);
+  }
   context.drawImage(video, sx, sy, side, side, 0, 0, size, size);
   return canvas.toDataURL("image/jpeg", 0.85);
 }
