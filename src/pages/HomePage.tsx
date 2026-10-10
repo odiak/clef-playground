@@ -39,6 +39,15 @@ const DEMOS: Demo[] = [
       en: "Hunt for the things on your card and snap them. When Clef recognizes one, the square is punched. Get a line for BINGO!",
     },
   },
+  {
+    path: "/draw",
+    emoji: "✏️🎨",
+    title: { ja: "描けるかな？", en: "Can You Draw It?" },
+    description: {
+      ja: "ランダムなお題を指やマウスでお絵かき。Clef がお題の絵に見えると判定したら合格！",
+      en: "Draw a random prompt with your finger or mouse. If Clef sees it as the prompt, you pass!",
+    },
+  },
 ];
 
 const MESSAGES = defineMessages({

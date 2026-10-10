@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800;900&display=block"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --orange: #f38020;
+        --yellow: #faae40;
+        --cream: #fff6ec;
+        --peach: #ffe3c8;
+        --ink: #2b2b33;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+      body {
+        font-family: "M PLUS Rounded 1c", sans-serif;
+        color: var(--ink);
+        background-color: var(--cream);
+        background-image: radial-gradient(color-mix(in srgb, var(--orange) 22%, transparent) 3px, transparent 3px);
+        background-size: 36px 36px;
+        padding: 48px 64px 64px 48px;
+      }
+      .card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 40px;
+        height: 100%;
+        padding: 0 48px;
+        overflow: hidden;
+        border: 6px solid var(--ink);
+        border-radius: 56px;
+        background: #fff;
+        box-shadow: 16px 16px 0 0 var(--orange);
+      }
+      .blob {
+        position: absolute;
+        border-radius: 9999px;
+      }
+      .text {
+        position: relative;
+        flex: 1;
+      }
+      .tag {
+        display: inline-block;
+        padding: 6px 20px;
+        border-radius: 9999px;
+        background: var(--peach);
+        color: #c95f0a;
+        font-size: 24px;
+        font-weight: 800;
+      }
+      h1 {
+        margin-top: 18px;
+        font-size: 86px;
+        font-weight: 900;
+        line-height: 1.1;
+        white-space: nowrap;
+        letter-spacing: -0.02em;
+      }
+      h1 span {
+        color: var(--orange);
+      }
+      .lead {
+        margin-top: 14px;
+        font-size: 30px;
+        font-weight: 800;
+        color: color-mix(in srgb, var(--ink) 80%, transparent);
+      }
+      .chips {
+        display: flex;
+        gap: 14px;
+        margin-top: 28px;
+      }
+      .chip {
+        padding: 8px 20px;
+        border: 4px solid var(--ink);
+        border-radius: 24px;
+        font-size: 30px;
+        font-weight: 900;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+      .paper {
+        position: relative;
+        flex: none;
+        width: 360px;
+        height: 360px;
+        border: 6px solid var(--ink);
+        border-radius: 40px;
+        background: #fff;
+        box-shadow: 10px 10px 0 0 var(--ink);
+        transform: rotate(3deg);
+      }
+      .paper svg {
+        width: 100%;
+        height: 100%;
+      }
+      .sticker {
+        position: absolute;
+        top: -56px;
+        left: 50%;
+        padding: 6px 22px;
+        border: 5px solid var(--ink);
+        border-radius: 24px;
+        background: var(--yellow);
+        box-shadow: 0 6px 0 0 var(--ink);
+        font-size: 36px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        transform: translateX(-50%) rotate(-6deg);
+      }
+      .pencil {
+        position: absolute;
+        right: -40px;
+        bottom: -30px;
+        font-size: 96px;
+        transform: rotate(-10deg);
+      }
+      .footer {
+        margin-top: 28px;
+        font-size: 20px;
+        font-weight: 800;
+        color: color-mix(in srgb, var(--ink) 55%, transparent);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="blob" style="top: -90px; right: -90px; width: 300px; height: 300px; background: color-mix(in srgb, var(--yellow) 40%, transparent)"></div>
+      <div class="blob" style="bottom: -120px; right: 300px; width: 220px; height: 220px; background: color-mix(in srgb, var(--orange) 15%, transparent)"></div>
+
+      <div class="text">
+        <p class="tag">Clef Playground</p>
+        <h1>描ける<span>かな？</span></h1>
+        <p class="lead">お題を描いて、AI に当ててもらおう</p>
+        <div class="chips">
+          <span class="chip">🐱 ねこ</span>
+          <span class="chip">🚲 じてんしゃ</span>
+          <span class="chip">🌈 にじ</span>
+        </div>
+        <p class="footer">Powered by Clef on Cloudflare Workers AI</p>
+      </div>
+
+      <div class="paper">
+        <!-- 指で描いたような、黒い線だけのねこ -->
+        <svg viewBox="0 0 100 100" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M28 44 L26 22 L41 33 Q50 30 59 33 L74 22 L72 44 Q78 58 70 68 Q60 78 50 78 Q40 78 30 68 Q22 58 28 44 Z" />
+          <path d="M40 49 q0 3 0 4 M60 49 q0 3 0 4" />
+          <path d="M47 58 L53 58 L50 61 Z M50 61 q-3 5 -7 3 M50 61 q3 5 7 3" />
+          <path d="M33 60 L18 57 M33 64 L18 66 M67 60 L82 57 M67 64 L82 66" />
+        </svg>
+        <span class="sticker">合格！ 87% 🎉</span>
+        <span class="pencil">✏️</span>
+      </div>
+    </div>
+  </body>
+</html>

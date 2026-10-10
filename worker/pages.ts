@@ -45,6 +45,14 @@ export const PAGES: Record<string, PageMeta> = {
     },
     image: "/ogp/bingo.png",
   },
+  "/draw": {
+    title: { ja: `描けるかな？ | ${SITE_NAME}`, en: `Can You Draw It? | ${SITE_NAME}` },
+    description: {
+      ja: "ランダムなお題を指やマウスでお絵かき。Clef がお題の絵に見えると判定したら合格！Cloudflare Workers AI の Clef を使ったデモ。",
+      en: "Draw a random prompt with your finger or mouse. If Clef sees it as the prompt, you pass! A demo of Clef on Cloudflare Workers AI.",
+    },
+    image: "/ogp/draw.png",
+  },
 };
 
 function escapeAttribute(value: string): string {
