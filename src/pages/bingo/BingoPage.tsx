@@ -57,7 +57,7 @@ const MESSAGES = defineMessages({
     ],
     sizeLabel: "カードの大きさ",
     sizes: { 3: { name: "3×3", note: "サクッと 9 マス" }, 5: { name: "5×5", note: "じっくり 25 マス" } },
-    deal: "カードを配る",
+    start: "はじめる",
     theme: "テーマ",
     changeTheme: "🔄 テーマを変える",
     elapsed: "経過時間",
@@ -101,7 +101,7 @@ const MESSAGES = defineMessages({
     ],
     sizeLabel: "Card size",
     sizes: { 3: { name: "3×3", note: "Quick · 9 squares" }, 5: { name: "5×5", note: "Classic · 25 squares" } },
-    deal: "Deal a card",
+    start: "Start",
     theme: "Theme",
     changeTheme: "🔄 Change theme",
     elapsed: "Time",
@@ -398,7 +398,7 @@ function Setup({ size, onDeal, t }: { size: BingoSize; onDeal: (size: BingoSize)
 
       <div className="flex justify-center">
         <button type="button" className="btn-pop min-w-60" onClick={() => onDeal(selected)}>
-          🎲 {t.deal}
+          🎲 {t.start}
         </button>
       </div>
     </div>
