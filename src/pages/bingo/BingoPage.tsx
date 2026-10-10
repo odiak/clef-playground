@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BINGO_SIZES,
   BINGO_THEMES,
@@ -20,6 +20,7 @@ import { errorMessage } from "../../lib/errors";
 import { defineMessages, useLang, useMessages } from "../../lib/i18n";
 import { judgeBingo } from "./api";
 import { BingoCard } from "./BingoCard";
+import { type PhotoEntry, PhotoViewer } from "./PhotoViewer";
 import {
   applyJudge,
   type BingoGame,
@@ -44,8 +45,8 @@ type Shot =
 
 // これ以上の確率なら、見つからなかったときに「おしい」と出す
 const NEAR_MISS_THRESHOLD = 0.3;
-// マスに残す写真の大きさ
-const THUMBNAIL_SIZE = 160;
+// マスに残す写真の大きさ。タップして拡大したときにも見られる大きさにする
+const THUMBNAIL_SIZE = 400;
 
 const MESSAGES = defineMessages({
   ja: {
@@ -197,6 +198,29 @@ export function BingoPage() {
   const hasPunched = game?.cells.some((cell) => cell.itemId !== null && isOpen(cell)) ?? false;
   const isJudging = shot.kind === "judging";
 
+  // ビンゴやギブアップの瞬間だけ結果を大きく出す。リロード後に見返すときは出さない
+  const [celebratingGameId, setCelebratingGameId] = useState<string | null>(null);
+
+  // 拡大表示する写真。見つけた順に並べて、前後に送れるようにする
+  const photoEntries = useMemo<PhotoEntry[]>(
+    () =>
+      (game?.cells ?? [])
+        .flatMap((cell) =>
+          cell.itemId !== null && cell.photo && cell.openedAt !== undefined
+            ? [{ itemId: cell.itemId, photo: cell.photo, openedAt: cell.openedAt }]
+            : [],
+        )
+        .sort((a, b) => a.openedAt - b.openedAt),
+    [game],
+  );
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
+  const openPhoto = (cellIndex: number) => {
+    const cell = game?.cells[cellIndex];
+    const index = photoEntries.findIndex((entry) => entry.itemId === cell?.itemId);
+    if (index >= 0) setViewingIndex(index);
+  };
+  const closePhoto = useCallback(() => setViewingIndex(null), []);
+
   const deal = (nextSize: BingoSize, nextTheme: BingoTheme) => {
     runIdRef.current++;
     setSize(nextSize);
@@ -247,7 +271,10 @@ export function BingoPage() {
       const next = applyJudge(latest, judge.found, thumbnail, Date.now());
       setGame(next);
       setShot({ kind: "result", photo, judge });
-      if (next.result) camera.stop();
+      if (next.result) {
+        camera.stop();
+        setCelebratingGameId(next.id);
+      }
     } catch (error) {
       if (runId === runIdRef.current) setShot({ kind: "error", error, photo });
     }
@@ -258,6 +285,7 @@ export function BingoPage() {
     runIdRef.current++;
     camera.stop();
     setGame(giveUp(game, Date.now()));
+    setCelebratingGameId(game.id);
     setShot({ kind: "idle" });
   };
 
@@ -302,9 +330,12 @@ export function BingoPage() {
             </dl>
           </div>
 
-          <div className="relative">
-            <BingoCard game={game} />
-            {game.result && <ResultBadge result={game.result} t={t} />}
+          {/* 結果のスティッカーをカードの上辺に貼るぶん、上を空けておく */}
+          <div className={`relative ${game.result ? "mt-10" : ""}`}>
+            <BingoCard game={game} onOpenPhoto={openPhoto} />
+            {game.result && (
+              <ResultBadge key={game.id} result={game.result} celebrate={celebratingGameId === game.id} t={t} />
+            )}
           </div>
 
           {isPlaying ? (
@@ -360,6 +391,18 @@ export function BingoPage() {
       </DetailsCard>
 
       <p className="text-center text-xs font-bold text-ink/50">{t.privacy}</p>
+
+      {game && theme && viewingIndex !== null && photoEntries[viewingIndex] && (
+        <PhotoViewer
+          entries={photoEntries}
+          index={viewingIndex}
+          theme={theme}
+          startedAt={game.startedAt}
+          formatTime={formatDuration}
+          onChange={setViewingIndex}
+          onClose={closePhoto}
+        />
+      )}
     </div>
   );
 }
@@ -562,11 +605,24 @@ function StageSticker({ className, children }: { className: string; children: Re
   );
 }
 
-function ResultBadge({ result, t }: { result: "bingo" | "gaveUp"; t: Messages }) {
+// 終わった瞬間はカードの真ん中に大きく出し、少ししたら縮めてカードの上辺に移す
+const CELEBRATE_MS = 1600;
+
+function ResultBadge({ result, celebrate, t }: { result: "bingo" | "gaveUp"; celebrate: boolean; t: Messages }) {
+  const [atEdge, setAtEdge] = useState(!celebrate);
+  useEffect(() => {
+    if (!celebrate) return;
+    const timer = setTimeout(() => setAtEdge(true), CELEBRATE_MS);
+    return () => clearTimeout(timer);
+  }, [celebrate]);
+
   return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+    <div
+      className="pointer-events-none absolute left-1/2 z-10 transition-[top,translate,scale] duration-500 ease-out"
+      style={{ top: atEdge ? 0 : "50%", translate: atEdge ? "-50% -75%" : "-50% -50%", scale: atEdge ? 0.6 : 1 }}
+    >
       <p
-        className={`animate-pop-in -rotate-6 rounded-3xl border-4 border-ink px-6 py-2 font-black tracking-wider whitespace-nowrap shadow-[0_6px_0_0_var(--color-ink)] ${
+        className={`${celebrate ? "animate-pop-in" : ""} -rotate-6 rounded-3xl border-4 border-ink px-6 py-2 font-black tracking-wider whitespace-nowrap shadow-[0_6px_0_0_var(--color-ink)] ${
           result === "bingo" ? "bg-cf-yellow text-5xl text-ink" : "bg-white text-3xl text-ink/80"
         }`}
       >

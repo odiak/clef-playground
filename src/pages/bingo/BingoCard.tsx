@@ -3,7 +3,8 @@ import { findItem, findTheme } from "../../../shared/bingo";
 import { useLang } from "../../lib/i18n";
 import { type BingoCell, type BingoGame, completedLines, isOpen } from "./game";
 
-export function BingoCard({ game }: { game: BingoGame }) {
+/** onOpenPhoto を渡すと、穴が空いたマスをタップして写真を大きく見られる */
+export function BingoCard({ game, onOpenPhoto }: { game: BingoGame; onOpenPhoto?: (cellIndex: number) => void }) {
   const theme = findTheme(game.themeId)!;
   const winning = useMemo(() => new Set(completedLines(game).flat()), [game]);
   const isLarge = game.size === 3;
@@ -15,7 +16,13 @@ export function BingoCard({ game }: { game: BingoGame }) {
     >
       {game.cells.map((cell, index) => (
         <li key={cell.itemId ?? "free"}>
-          <Cell cell={cell} label={cell.itemId ? findItem(theme, cell.itemId) : undefined} isLarge={isLarge} isWinning={winning.has(index)} />
+          <Cell
+            cell={cell}
+            label={cell.itemId ? findItem(theme, cell.itemId) : undefined}
+            isLarge={isLarge}
+            isWinning={winning.has(index)}
+            onOpenPhoto={onOpenPhoto && cell.photo ? () => onOpenPhoto(index) : undefined}
+          />
         </li>
       ))}
     </ul>
@@ -27,11 +34,13 @@ function Cell({
   label,
   isLarge,
   isWinning,
+  onOpenPhoto,
 }: {
   cell: BingoCell;
   label: ReturnType<typeof findItem>;
   isLarge: boolean;
   isWinning: boolean;
+  onOpenPhoto?: () => void;
 }) {
   const { lang } = useLang();
   const base = `relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-ink text-center ${
@@ -62,9 +71,14 @@ function Cell({
     );
   }
 
-  // 穴が空いたマス: 撮った写真をパンチで抜いた穴からのぞかせる
+  // 穴が空いたマス: 撮った写真をパンチで抜いた穴からのぞかせる。タップすると写真を大きく見られる
+  const Punched = onOpenPhoto ? "button" : "div";
   return (
-    <div key={cell.openedAt} className={`${base} animate-pop-in bg-cf-peach`}>
+    <Punched
+      key={cell.openedAt}
+      {...(onOpenPhoto && { type: "button" as const, onClick: onOpenPhoto })}
+      className={`${base} w-full animate-pop-in bg-cf-peach ${onOpenPhoto ? "cursor-zoom-in focus-visible:outline-[3px] focus-visible:outline-ink" : ""}`}
+    >
       {cell.photo ? (
         <img src={cell.photo} alt={label.label[lang]} className="absolute inset-0 size-full object-cover" />
       ) : (
@@ -76,6 +90,6 @@ function Cell({
       >
         {name}
       </span>
-    </div>
+    </Punched>
   );
 }
