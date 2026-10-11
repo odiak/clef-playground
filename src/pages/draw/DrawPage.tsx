@@ -296,7 +296,7 @@ export function DrawPage() {
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-cf-peach/90">
                 <p className="text-sm font-extrabold text-ink/60">{t.topic}</p>
                 <p className="text-3xl font-black">
-                  {phase.topic.emoji} {phase.topic.label[lang]}
+                  {phase.topic.label[lang]}
                 </p>
                 <CountNumber key={phase.count}>{phase.count}</CountNumber>
               </div>
@@ -461,8 +461,7 @@ function TopicBar({
       <div className="flex items-center justify-between gap-2">
         <p className="flex min-w-0 items-center gap-1.5 rounded-full border-2 border-ink bg-white px-3 py-1 font-black">
           <span className="shrink-0 text-xs font-extrabold text-ink/60">{t.topic}</span>
-          <span className="text-xl">{topic.emoji}</span>
-          <span className="truncate">{topic.label[lang]}</span>
+          <span className="truncate text-lg">{topic.label[lang]}</span>
         </p>
         {showTimer && (
           <p
@@ -590,7 +589,7 @@ function ResultCard({ topic, judge, t }: { topic: DrawTopic; judge: DrawJudgeRes
     const [id] = Object.entries(judge.guesses).reduce((best, entry) => (entry[1] > best[1] ? entry : best), ["", -1]);
     if (id === topic.id) return t.guessTopic(topic.label[lang]);
     const guessed = findTopic(id);
-    return guessed ? t.guessOther(`${guessed.emoji} ${guessed.label[lang]}`) : t.guessUnknown;
+    return guessed ? t.guessOther(guessed.label[lang]) : t.guessUnknown;
   })();
 
   return (
@@ -626,7 +625,7 @@ function JudgeDetails({ judge, topic, t }: { judge: DrawJudgeResponse; topic: Dr
   const rows = Object.entries(judge.guesses)
     .map(([id, probability]) => {
       const guessed = findTopic(id);
-      return { id, label: guessed ? `${guessed.emoji} ${guessed.label[lang]}` : `❓ ${t.other}`, probability };
+      return { id, label: guessed ? guessed.label[lang] : t.other, probability };
     })
     .sort((a, b) => b.probability - a.probability);
 
@@ -640,7 +639,7 @@ function JudgeDetails({ judge, topic, t }: { judge: DrawJudgeResponse; topic: Dr
       </div>
       <ul className="space-y-2">
         <ProbabilityRow
-          label={`${topic.emoji} ${t.match}`}
+          label={t.match}
           probability={judge.probability}
           isChosen={judge.passed}
         />
