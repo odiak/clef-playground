@@ -6,32 +6,40 @@ export type DrawTopic = {
   label: Localized;
   /** Clef への質問に埋め込む、英語の名詞句（「a ... 」） */
   prompt: string;
+  /** 形が複雑だったり、ほかのものと描き分けにくかったりする、難しいお題 */
+  hard: boolean;
 };
 
 function topic(id: string, ja: string, en: string, prompt: string): DrawTopic {
-  return { id, label: { ja, en }, prompt };
+  return { id, label: { ja, en }, prompt, hard: false };
+}
+
+function hardTopic(id: string, ja: string, en: string, prompt: string): DrawTopic {
+  return { id, label: { ja, en }, prompt, hard: true };
 }
 
 // 黒い線だけで、30 秒あれば誰でもそれらしく描けそうなものを選ぶ。
-// 絵文字を出すとお手本になってしまうので、お題は名前だけにする
+// 絵文字を出すとお手本になってしまうので、お題は名前だけにする。
+// 表示名はふだん書くとおりの表記にし、同じ読みのものと取り違えないようにする
+// （「くも」ではなく「雲」と「クモ」、「はな」ではなく「花」）。動物の名前はカタカナで書く
 export const DRAW_TOPICS: DrawTopic[] = [
   // 動物
-  topic("cat", "ねこ", "Cat", "a cat"),
-  topic("dog", "いぬ", "Dog", "a dog"),
-  topic("rabbit", "うさぎ", "Rabbit", "a rabbit"),
-  topic("pig", "ぶた", "Pig", "a pig"),
-  topic("elephant", "ぞう", "Elephant", "an elephant"),
-  topic("giraffe", "きりん", "Giraffe", "a giraffe"),
-  topic("fish", "さかな", "Fish", "a fish"),
-  topic("whale", "くじら", "Whale", "a whale"),
-  topic("octopus", "たこ", "Octopus", "an octopus"),
-  topic("bird", "とり", "Bird", "a bird"),
+  topic("cat", "ネコ", "Cat", "a cat"),
+  topic("dog", "イヌ", "Dog", "a dog"),
+  topic("rabbit", "ウサギ", "Rabbit", "a rabbit"),
+  topic("pig", "ブタ", "Pig", "a pig"),
+  topic("elephant", "ゾウ", "Elephant", "an elephant"),
+  topic("giraffe", "キリン", "Giraffe", "a giraffe"),
+  topic("fish", "魚", "Fish", "a fish"),
+  topic("whale", "クジラ", "Whale", "a whale"),
+  topic("octopus", "タコ", "Octopus", "an octopus"),
+  topic("bird", "鳥", "Bird", "a bird"),
   topic("penguin", "ペンギン", "Penguin", "a penguin"),
-  topic("snake", "へび", "Snake", "a snake"),
-  topic("turtle", "かめ", "Turtle", "a turtle"),
-  topic("frog", "かえる", "Frog", "a frog"),
-  topic("snail", "かたつむり", "Snail", "a snail"),
-  topic("butterfly", "ちょうちょ", "Butterfly", "a butterfly"),
+  topic("snake", "ヘビ", "Snake", "a snake"),
+  topic("turtle", "カメ", "Turtle", "a turtle"),
+  topic("frog", "カエル", "Frog", "a frog"),
+  topic("snail", "カタツムリ", "Snail", "a snail"),
+  topic("butterfly", "チョウ", "Butterfly", "a butterfly"),
   topic("spider", "クモ", "Spider", "a spider"),
   // 食べもの
   topic("apple", "りんご", "Apple", "an apple"),
@@ -45,46 +53,76 @@ export const DRAW_TOPICS: DrawTopic[] = [
   topic("pizza", "ピザ", "Pizza", "a slice of pizza"),
   topic("cup", "マグカップ", "Mug", "a mug or cup"),
   // 自然
-  topic("sun", "たいよう", "Sun", "the sun"),
+  topic("sun", "太陽", "Sun", "the sun"),
   topic("moon", "三日月", "Crescent Moon", "a crescent moon"),
-  topic("star", "ほし", "Star", "a star"),
-  topic("cloud", "くも", "Cloud", "a cloud"),
-  topic("rainbow", "にじ", "Rainbow", "a rainbow"),
-  topic("lightning", "かみなり", "Lightning", "a lightning bolt"),
-  topic("flower", "はな", "Flower", "a flower"),
+  topic("star", "星", "Star", "a star"),
+  topic("cloud", "雲", "Cloud", "a cloud"),
+  topic("rainbow", "虹", "Rainbow", "a rainbow"),
+  topic("lightning", "雷", "Lightning", "a lightning bolt"),
+  topic("flower", "花", "Flower", "a flower"),
   topic("tree", "木", "Tree", "a tree"),
-  topic("leaf", "はっぱ", "Leaf", "a leaf"),
-  topic("mountain", "やま", "Mountain", "a mountain"),
-  topic("snowman", "ゆきだるま", "Snowman", "a snowman"),
+  topic("leaf", "葉っぱ", "Leaf", "a leaf"),
+  topic("mountain", "山", "Mountain", "a mountain"),
+  topic("snowman", "雪だるま", "Snowman", "a snowman"),
   // 乗りもの・建物
-  topic("car", "くるま", "Car", "a car"),
-  topic("bicycle", "じてんしゃ", "Bicycle", "a bicycle"),
-  topic("train", "でんしゃ", "Train", "a train"),
-  topic("airplane", "ひこうき", "Airplane", "an airplane"),
-  topic("boat", "ふね", "Boat", "a boat"),
+  topic("car", "車", "Car", "a car"),
+  topic("bicycle", "自転車", "Bicycle", "a bicycle"),
+  topic("train", "電車", "Train", "a train"),
+  topic("airplane", "飛行機", "Airplane", "an airplane"),
+  topic("boat", "船", "Boat", "a boat"),
   topic("rocket", "ロケット", "Rocket", "a rocket"),
-  topic("house", "いえ", "House", "a house"),
-  topic("castle", "おしろ", "Castle", "a castle"),
+  topic("house", "家", "House", "a house"),
+  topic("castle", "お城", "Castle", "a castle"),
   // 身の回りのもの
-  topic("umbrella", "かさ", "Umbrella", "an umbrella"),
-  topic("glasses", "めがね", "Glasses", "a pair of glasses"),
-  topic("key", "かぎ", "Key", "a key"),
+  topic("umbrella", "傘", "Umbrella", "an umbrella"),
+  topic("glasses", "メガネ", "Glasses", "a pair of glasses"),
+  topic("key", "鍵", "Key", "a key"),
   topic("scissors", "はさみ", "Scissors", "a pair of scissors"),
-  topic("light_bulb", "でんきゅう", "Light Bulb", "a light bulb"),
-  topic("clock", "とけい", "Clock", "a clock"),
-  topic("book", "ほん", "Book", "a book"),
-  topic("envelope", "ふうとう", "Envelope", "an envelope"),
-  topic("chair", "いす", "Chair", "a chair"),
+  topic("light_bulb", "電球", "Light Bulb", "a light bulb"),
+  topic("clock", "時計", "Clock", "a clock"),
+  topic("book", "本", "Book", "a book"),
+  topic("envelope", "封筒", "Envelope", "an envelope"),
+  topic("chair", "椅子", "Chair", "a chair"),
   topic("candle", "ろうそく", "Candle", "a candle"),
   topic("guitar", "ギター", "Guitar", "a guitar"),
-  topic("crown", "おうかん", "Crown", "a crown"),
-  topic("hat", "ぼうし", "Hat", "a hat"),
-  topic("shoe", "くつ", "Shoe", "a shoe"),
+  topic("crown", "王冠", "Crown", "a crown"),
+  topic("hat", "帽子", "Hat", "a hat"),
+  topic("shoe", "靴", "Shoe", "a shoe"),
   topic("t_shirt", "Tシャツ", "T-shirt", "a T-shirt"),
-  topic("balloon", "ふうせん", "Balloon", "a balloon"),
+  topic("balloon", "風船", "Balloon", "a balloon"),
   topic("ghost", "おばけ", "Ghost", "a ghost"),
   topic("robot", "ロボット", "Robot", "a robot"),
+
+  // 難しいお題: 形が込み入っていたり、特徴をつかまないとほかの動物やものに見えたりするもの。
+  // 色に頼らないと伝わらないものや、形のないもの（風など）は、どう描いても無理なので入れない
+  hardTopic("kangaroo", "カンガルー", "Kangaroo", "a kangaroo"),
+  hardTopic("hedgehog", "ハリネズミ", "Hedgehog", "a hedgehog"),
+  hardTopic("flamingo", "フラミンゴ", "Flamingo", "a flamingo"),
+  hardTopic("seahorse", "タツノオトシゴ", "Seahorse", "a seahorse"),
+  hardTopic("camel", "ラクダ", "Camel", "a camel"),
+  hardTopic("zebra", "シマウマ", "Zebra", "a zebra"),
+  hardTopic("lion", "ライオン", "Lion", "a lion"),
+  hardTopic("crab", "カニ", "Crab", "a crab"),
+  hardTopic("dinosaur", "恐竜", "Dinosaur", "a dinosaur"),
+  hardTopic("helicopter", "ヘリコプター", "Helicopter", "a helicopter"),
+  hardTopic("fire_truck", "消防車", "Fire Truck", "a fire truck"),
+  hardTopic("ferris_wheel", "観覧車", "Ferris Wheel", "a Ferris wheel"),
+  hardTopic("lighthouse", "灯台", "Lighthouse", "a lighthouse"),
+  hardTopic("piano", "ピアノ", "Piano", "a piano"),
+  hardTopic("violin", "バイオリン", "Violin", "a violin"),
+  hardTopic("camera", "カメラ", "Camera", "a camera"),
+  hardTopic("vacuum", "掃除機", "Vacuum Cleaner", "a vacuum cleaner"),
+  hardTopic("hamburger", "ハンバーガー", "Hamburger", "a hamburger"),
+  hardTopic("spaghetti", "スパゲッティ", "Spaghetti", "a plate of spaghetti"),
+  hardTopic("volcano", "火山", "Volcano", "a volcano"),
+  hardTopic("waterfall", "滝", "Waterfall", "a waterfall"),
+  hardTopic("tornado", "竜巻", "Tornado", "a tornado"),
+  hardTopic("tent", "テント", "Tent", "a tent"),
+  hardTopic("astronaut", "宇宙飛行士", "Astronaut", "an astronaut"),
 ];
+
+/** お題のうち、難しいお題が出る割合 */
+export const HARD_TOPIC_RATE = 0.25;
 
 export function findTopic(id: string): DrawTopic | undefined {
   return DRAW_TOPICS.find((topic) => topic.id === id);

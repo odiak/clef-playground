@@ -1,6 +1,14 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import type { ClefModel } from "../../../shared/clef";
-import { DRAW_TOPICS, type DrawJudgeResponse, type DrawTopic, findTopic, TIME_LIMITS, type TimeLimit } from "../../../shared/draw";
+import {
+  DRAW_TOPICS,
+  type DrawJudgeResponse,
+  type DrawTopic,
+  findTopic,
+  HARD_TOPIC_RATE,
+  TIME_LIMITS,
+  type TimeLimit,
+} from "../../../shared/draw";
 import { DetailsCard } from "../../components/DetailsCard";
 import { MODEL_LABEL, ModelToggle } from "../../components/ModelToggle";
 import { Notice } from "../../components/Notice";
@@ -34,7 +42,7 @@ const MESSAGES = defineMessages({
     title: "描けるかな？",
     lead: "お題を指やマウスで描いて、Clef に当ててもらおう",
     howTo: [
-      "ランダムにお題が出ます",
+      "ランダムにお題が出ます。ときどき難しいお題も！",
       "指やマウスで、黒い線だけで描こう",
       "Clef がお題の絵に見えると判定したら合格！",
     ],
@@ -42,6 +50,7 @@ const MESSAGES = defineMessages({
     timeLimits: { 30: { name: "30 秒", note: "時間切れで判定" }, none: { name: "なし", note: "じっくり描く" } },
     start: "はじめる",
     topic: "お題",
+    hard: "むずかしい",
     pen: "ペン",
     eraser: "消しゴム",
     undo: "元に戻す",
@@ -76,7 +85,7 @@ const MESSAGES = defineMessages({
     title: "Can You Draw It?",
     lead: "Draw the prompt with your finger or mouse, and see if Clef gets it",
     howTo: [
-      "You get a random prompt",
+      "You get a random prompt. Sometimes a hard one!",
       "Draw it with your finger or mouse, in black lines only",
       "If Clef sees it as the prompt, you pass!",
     ],
@@ -84,6 +93,7 @@ const MESSAGES = defineMessages({
     timeLimits: { 30: { name: "30 sec", note: "Judged when time's up" }, none: { name: "None", note: "Take your time" } },
     start: "Start",
     topic: "Draw",
+    hard: "Hard",
     pen: "Pen",
     eraser: "Eraser",
     undo: "Undo",
@@ -172,8 +182,12 @@ export function DrawPage() {
   const now = useNow(isDrawing && phase.deadline !== null);
   const judge = phase.kind === "result" ? phase.judge : null;
 
+  // ときどき難しいお題を混ぜる。難しいお題は数が少ないので、最近出たものを避けきれないときはそのまま選ぶ
   const pickTopic = (): DrawTopic => {
-    const candidates = DRAW_TOPICS.filter((topic) => !recentRef.current.includes(topic.id));
+    const hard = Math.random() < HARD_TOPIC_RATE;
+    const pool = DRAW_TOPICS.filter((topic) => topic.hard === hard);
+    const fresh = pool.filter((topic) => !recentRef.current.includes(topic.id));
+    const candidates = fresh.length > 0 ? fresh : pool;
     const topic = candidates[Math.floor(Math.random() * candidates.length)];
     recentRef.current = [topic.id, ...recentRef.current].slice(0, RECENT_TOPICS);
     return topic;
@@ -295,9 +309,8 @@ export function DrawPage() {
             {phase.kind === "countdown" && (
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-cf-peach/90">
                 <p className="text-sm font-extrabold text-ink/60">{t.topic}</p>
-                <p className="text-3xl font-black">
-                  {phase.topic.label[lang]}
-                </p>
+                {phase.topic.hard && <HardBadge t={t} />}
+                <p className="text-3xl font-black">{phase.topic.label[lang]}</p>
                 <CountNumber key={phase.count}>{phase.count}</CountNumber>
               </div>
             )}
@@ -458,10 +471,12 @@ function TopicBar({
   const hurry = remainingMs !== null && remaining <= HURRY_MS;
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex min-w-0 items-center gap-1.5 rounded-full border-2 border-ink bg-white px-3 py-1 font-black">
+      <div className={`flex items-center justify-between gap-2 ${topic.hard ? "pt-3" : ""}`}>
+        {/* お題の名前が切れないよう、「むずかしい」は枠の角に貼って幅をとらないようにする */}
+        <p className="relative flex min-w-0 items-center gap-1.5 rounded-full border-2 border-ink bg-white px-3 py-1 font-black">
           <span className="shrink-0 text-xs font-extrabold text-ink/60">{t.topic}</span>
-          <span className="truncate text-lg">{topic.label[lang]}</span>
+          <span className="text-lg leading-tight">{topic.label[lang]}</span>
+          {topic.hard && <HardBadge t={t} className="absolute right-2 bottom-full translate-y-1" />}
         </p>
         {showTimer && (
           <p
@@ -555,6 +570,14 @@ function Toolbar({
         ))}
       </div>
     </div>
+  );
+}
+
+function HardBadge({ t, className = "" }: { t: Messages; className?: string }) {
+  return (
+    <span className={`${className} shrink-0 -rotate-3 rounded-full border-2 border-ink bg-cf-yellow px-2 py-0.5 text-[11px] leading-tight font-black whitespace-nowrap text-ink`}>
+      🔥 {t.hard}
+    </span>
   );
 }
 
