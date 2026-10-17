@@ -1,4 +1,4 @@
-import type { AvatarAnswers, OptionId } from "../../../shared/avatar";
+import { type AVATAR_QUESTIONS, type AvatarAnswers, type AvatarQuestionId, type OptionId } from "../../../shared/avatar";
 
 /** アバターを描くためのパラメーター */
 export type AvatarParams = {
@@ -71,4 +71,27 @@ export function toAvatarParams(answers: AvatarAnswers): AvatarParams {
     earrings: yes(answers.earrings),
     hat: answers.hat.choice,
   };
+}
+
+type Question<K extends AvatarQuestionId> = (typeof AVATAR_QUESTIONS)[K];
+
+/** 回答の値。選択肢の質問は選んだ選択肢、はい・いいえの質問は「はい」かどうか */
+export type AnswerValue<K extends AvatarQuestionId> = Question<K> extends { type: "choice" } ? OptionId<K> : boolean;
+
+/** 完成後にユーザーが直した回答 */
+export type AvatarOverrides = { [K in AvatarQuestionId]?: AnswerValue<K> };
+
+export function answerValue<K extends AvatarQuestionId>(answers: AvatarAnswers, id: K): AnswerValue<K> {
+  const answer = answers[id] as AvatarAnswers[AvatarQuestionId];
+  return (answer.type === "noul" ? yes(answer) : answer.choice) as AnswerValue<K>;
+}
+
+/** 直した回答で Clef の回答を置き換える */
+export function applyOverrides(answers: AvatarAnswers, overrides: AvatarOverrides): AvatarAnswers {
+  const next: Record<string, AvatarAnswers[AvatarQuestionId]> = { ...answers };
+  for (const [id, value] of Object.entries(overrides)) {
+    const answer = answers[id as AvatarQuestionId];
+    next[id] = answer.type === "noul" ? { ...answer, noul: value ? 1 : 0 } : ({ ...answer, choice: value } as typeof answer);
+  }
+  return next as AvatarAnswers;
 }

@@ -19,7 +19,8 @@ import { errorMessage } from "../../lib/errors";
 import { defineMessages, useLang, useMessages } from "../../lib/i18n";
 import { analyzeFace } from "./api";
 import { Avatar, AVATAR_STYLES, type AvatarStyleId } from "./Avatar";
-import { toAvatarParams } from "./params";
+import { AvatarEditor } from "./AvatarEditor";
+import { applyOverrides, type AvatarOverrides, toAvatarParams } from "./params";
 import { saveSvgAsPng } from "./saveImage";
 import { StylePicker } from "./StylePicker";
 
@@ -61,6 +62,8 @@ const MESSAGES = defineMessages({
     save: "保存する",
     resend: "送り直す",
     saveFailed: "画像の保存に失敗しました",
+    edit: "✏️ 見た目を調整する",
+    edited: (count: number) => `${count} か所変更`,
     details: "🔍 モデルと回答の詳細",
     detailsEmpty: "アバターを作ると、ここに Clef の回答が表示されます",
     privacy: "撮影した写真は判定のためだけに送信され、保存されません。",
@@ -84,6 +87,8 @@ const MESSAGES = defineMessages({
     save: "Save",
     resend: "Try again",
     saveFailed: "Couldn't save the image",
+    edit: "✏️ Adjust the look",
+    edited: (count) => `${count} changed`,
     details: "🔍 Model & answer details",
     detailsEmpty: "Make an avatar to see Clef's answers here",
     privacy: "Your photo is sent only for judging and is never stored.",
@@ -124,6 +129,7 @@ export function AvatarPage() {
       // 保存できなくても選択は反映する
     }
   };
+  const [overrides, setOverrides] = useState<AvatarOverrides>({});
   const svgRef = useRef<SVGSVGElement>(null);
 
   const runIdRef = useRef(0);
@@ -159,6 +165,7 @@ export function AvatarPage() {
     // 確認中はカメラを使わないので、組み立てに入ったら解放する
     camera.stop();
 
+    setOverrides({});
     setPhase({ kind: "building", photo, result: null, answered: 0, stagesDone: 0 });
     let result: AnalyzeResponse;
     try {
@@ -200,7 +207,8 @@ export function AvatarPage() {
   };
 
   const result = phase.kind === "building" || phase.kind === "done" ? phase.result : null;
-  const params = useMemo(() => (result ? toAvatarParams(result.answers) : null), [result]);
+  const params = useMemo(() => (result ? toAvatarParams(applyOverrides(result.answers, overrides)) : null), [result, overrides]);
+  const editedCount = Object.keys(overrides).length;
   const stagesDone = phase.kind === "done" ? AVATAR_STAGES.length : phase.kind === "building" ? phase.stagesDone : 0;
   const stages = useMemo(
     () => new Set<AvatarStageId>(AVATAR_STAGES.slice(0, stagesDone).map((stage) => stage.id)),
@@ -296,6 +304,12 @@ export function AvatarPage() {
       {phase.kind === "building" && <BuildProgress phase={phase} onSkip={skip} t={t} />}
 
       {phase.kind === "done" && params && <StylePicker params={params} value={styleId} onChange={changeStyle} />}
+
+      {phase.kind === "done" && (
+        <DetailsCard title={t.edit} aside={editedCount > 0 ? t.edited(editedCount) : undefined}>
+          <AvatarEditor answers={phase.result.answers} overrides={overrides} onChange={setOverrides} />
+        </DetailsCard>
+      )}
 
       {phase.kind === "done" && (
         <div className="grid grid-cols-2 gap-3 pt-1">
