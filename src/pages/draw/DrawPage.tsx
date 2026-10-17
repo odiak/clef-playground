@@ -8,6 +8,7 @@ import {
   HARD_TOPIC_RATE,
   TIME_LIMITS,
   type TimeLimit,
+  topGuess,
 } from "../../../shared/draw";
 import { DetailsCard } from "../../components/DetailsCard";
 import { MODEL_LABEL, ModelToggle } from "../../components/ModelToggle";
@@ -17,16 +18,20 @@ import { errorMessage } from "../../lib/errors";
 import { defineMessages, useLang, useMessages } from "../../lib/i18n";
 import { judgeDrawing } from "./api";
 import { DrawingCanvas, type DrawingCanvasHandle } from "./DrawingCanvas";
-import { exportDrawing, hasInk, type Tool, useDrawingHistory } from "./drawing";
+import { DrawingGallery } from "./DrawingGallery";
+import { DrawingImage } from "./DrawingImage";
+import { exportDrawing, hasInk, type Stroke, type Tool, useDrawingHistory } from "./drawing";
+import { type SavedDrawing, useSavedDrawings } from "./history";
+import { ShareButton } from "./ShareButton";
 
 type Phase =
   | { kind: "setup" }
   | { kind: "countdown"; topic: DrawTopic; count: number }
   | { kind: "drawing"; topic: DrawTopic; deadline: number | null }
-  | { kind: "judging"; topic: DrawTopic; image: string }
-  /** judge が null のときは、何も描かれていなかった */
-  | { kind: "result"; topic: DrawTopic; image: string | null; judge: DrawJudgeResponse | null }
-  | { kind: "error"; topic: DrawTopic; image: string; error: unknown };
+  | { kind: "judging"; topic: DrawTopic; strokes: readonly Stroke[] }
+  /** drawing が null のときは、何も描かれていなかった */
+  | { kind: "result"; topic: DrawTopic; drawing: SavedDrawing | null }
+  | { kind: "error"; topic: DrawTopic; strokes: readonly Stroke[]; error: unknown };
 
 // 判定に送る画像の大きさ
 const IMAGE_SIZE = 512;
@@ -79,7 +84,8 @@ const MESSAGES = defineMessages({
     match: "お題の絵に見える",
     guesses: "何の絵に見えるか（お題とランダムなお題から）",
     other: "どれでもない",
-    privacy: "描いた絵は判定のためだけに送信され、サーバーには保存されません。",
+    privacy:
+      "描いた絵は判定のためだけに送信され、サーバーには保存されません。描いた絵と判定結果は、あとで見返せるようにこのブラウザの中だけに保存されます。",
   },
   en: {
     title: "Can You Draw It?",
@@ -122,7 +128,8 @@ const MESSAGES = defineMessages({
     match: "Looks like the prompt",
     guesses: "What it looks like (prompt and random others)",
     other: "None of these",
-    privacy: "Your drawing is sent only for judging and is never stored on the server.",
+    privacy:
+      "Your drawing is sent only for judging and is never stored on the server. Your drawings and their results are kept only in this browser so you can look back at them.",
   },
 });
 
@@ -168,6 +175,7 @@ export function DrawPage() {
   const [model, setModel] = useState<ClefModel>("clef");
   const [tool, setTool] = useState<Tool>("pen");
   const drawing = useDrawingHistory();
+  const saved = useSavedDrawings();
   const canvasRef = useRef<DrawingCanvasHandle>(null);
   const recentRef = useRef<string[]>([]);
   // 判定の途中で次のお題に進んだり、画面を離れたりしたら、その判定結果は捨てる
@@ -180,7 +188,7 @@ export function DrawPage() {
 
   const isDrawing = phase.kind === "drawing";
   const now = useNow(isDrawing && phase.deadline !== null);
-  const judge = phase.kind === "result" ? phase.judge : null;
+  const judge = phase.kind === "result" ? (phase.drawing?.judge ?? null) : null;
 
   // ときどき難しいお題を混ぜる。難しいお題は数が少ないので、最近出たものを避けきれないときはそのまま選ぶ
   const pickTopic = (): DrawTopic => {
@@ -214,14 +222,18 @@ export function DrawPage() {
     void play(pickTopic(), limit);
   };
 
-  const judgeImage = async (topic: DrawTopic, image: string) => {
+  // 判定できた絵は、あとで見返したりシェアしたりできるように保存する
+  const judgeStrokes = async (topic: DrawTopic, strokes: readonly Stroke[]) => {
     const runId = ++runIdRef.current;
-    setPhase({ kind: "judging", topic, image });
+    setPhase({ kind: "judging", topic, strokes });
     try {
-      const result = await judgeDrawing(image, model, topic.id);
-      if (runId === runIdRef.current) setPhase({ kind: "result", topic, image, judge: result });
+      const result = await judgeDrawing(exportDrawing(strokes, IMAGE_SIZE), model, topic.id);
+      if (runId !== runIdRef.current) return;
+      const judged: SavedDrawing = { id: crypto.randomUUID(), topicId: topic.id, strokes, judge: result, drawnAt: Date.now() };
+      setPhase({ kind: "result", topic, drawing: judged });
+      saved.add(judged);
     } catch (error) {
-      if (runId === runIdRef.current) setPhase({ kind: "error", topic, image, error });
+      if (runId === runIdRef.current) setPhase({ kind: "error", topic, strokes, error });
     }
   };
 
@@ -232,10 +244,10 @@ export function DrawPage() {
     canvasRef.current?.flush();
     const strokes = drawing.latestRef.current;
     if (!hasInk(strokes)) {
-      setPhase({ kind: "result", topic: phase.topic, image: null, judge: null });
+      setPhase({ kind: "result", topic: phase.topic, drawing: null });
       return;
     }
-    void judgeImage(phase.topic, exportDrawing(strokes, IMAGE_SIZE));
+    void judgeStrokes(phase.topic, strokes);
   };
   const finish = useCallback(() => finishRef.current(), []);
 
@@ -261,6 +273,9 @@ export function DrawPage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isDrawing, undo, redo]);
+
+  const shownStrokes =
+    phase.kind === "judging" || phase.kind === "error" ? phase.strokes : phase.kind === "result" ? (phase.drawing?.strokes ?? null) : null;
 
   const backToSetup = () => {
     runIdRef.current++;
@@ -298,8 +313,8 @@ export function DrawPage() {
                 onStroke={drawing.addStroke}
                 label={t.canvasLabel}
               />
-            ) : phase.kind !== "result" || phase.image ? (
-              <img src={phase.image!} alt={t.drawingAlt} className="block aspect-square w-full" />
+            ) : shownStrokes ? (
+              <DrawingImage strokes={shownStrokes} label={t.drawingAlt} />
             ) : (
               <div className="flex aspect-square w-full items-center justify-center bg-white p-6 text-center font-black text-ink/50">
                 {t.empty}
@@ -364,13 +379,22 @@ export function DrawPage() {
                 <>
                   <Notice>😵 {errorMessage(phase.error, lang)}</Notice>
                   <div className="flex justify-center">
-                    <button type="button" className="btn-sub min-w-60" onClick={() => judgeImage(phase.topic, phase.image)}>
+                    <button type="button" className="btn-sub min-w-60" onClick={() => judgeStrokes(phase.topic, phase.strokes)}>
                       {t.retry}
                     </button>
                   </div>
                 </>
               )}
-              {phase.kind === "result" && <ResultCard topic={phase.topic} judge={phase.judge} t={t} />}
+              {phase.kind === "result" && (
+                <ResultCard topic={phase.topic} judge={judge} t={t}>
+                  {phase.drawing && (
+                    <ShareButton
+                      drawing={phase.drawing}
+                      className="rounded-full border-[3px] border-ink bg-white px-5 py-1.5 text-sm font-black shadow-[0_3px_0_0_var(--color-ink)] transition-[transform,box-shadow] duration-100 hover:bg-cf-cream active:translate-y-[2px] active:shadow-none"
+                    />
+                  )}
+                </ResultCard>
+              )}
               <div className="flex flex-col items-center gap-3 pt-1">
                 <button type="button" className="btn-pop min-w-60" onClick={() => play(pickTopic(), timeLimit)}>
                   {t.next}
@@ -389,6 +413,10 @@ export function DrawPage() {
             </>
           )}
         </>
+      )}
+
+      {phase.kind !== "countdown" && phase.kind !== "drawing" && (
+        <DrawingGallery drawings={saved.drawings} onDelete={saved.remove} />
       )}
 
       <DetailsCard title={t.details} aside={MODEL_LABEL[model].name}>
@@ -601,7 +629,17 @@ function StageSticker({ className, children }: { className: string; children: Re
   );
 }
 
-function ResultCard({ topic, judge, t }: { topic: DrawTopic; judge: DrawJudgeResponse | null; t: Messages }) {
+function ResultCard({
+  topic,
+  judge,
+  t,
+  children,
+}: {
+  topic: DrawTopic;
+  judge: DrawJudgeResponse | null;
+  t: Messages;
+  children?: ReactNode;
+}) {
   const { lang } = useLang();
   const percent = Math.round((judge?.probability ?? 0) * 100);
   const passLine = Math.round((judge?.threshold ?? 0.5) * 100);
@@ -609,7 +647,7 @@ function ResultCard({ topic, judge, t }: { topic: DrawTopic; judge: DrawJudgeRes
   // 何の絵に見えたかの、一番確率が高い選択肢
   const guess = (() => {
     if (!judge) return null;
-    const [id] = Object.entries(judge.guesses).reduce((best, entry) => (entry[1] > best[1] ? entry : best), ["", -1]);
+    const id = topGuess(judge.guesses);
     if (id === topic.id) return t.guessTopic(topic.label[lang]);
     const guessed = findTopic(id);
     return guessed ? t.guessOther(guessed.label[lang]) : t.guessUnknown;
@@ -638,13 +676,14 @@ function ResultCard({ topic, judge, t }: { topic: DrawTopic; judge: DrawJudgeRes
         </div>
       </div>
       {guess && <p className="text-sm font-bold">💭 {guess}</p>}
+      {children && <div className="flex justify-center pt-1">{children}</div>}
     </div>
   );
 }
 
 function JudgeDetails({ judge, topic, t }: { judge: DrawJudgeResponse; topic: DrawTopic; t: Messages }) {
   const { lang } = useLang();
-  const topGuess = Object.entries(judge.guesses).reduce((best, entry) => (entry[1] > best[1] ? entry : best), ["", -1])[0];
+  const topGuessId = topGuess(judge.guesses);
   const rows = Object.entries(judge.guesses)
     .map(([id, probability]) => {
       const guessed = findTopic(id);
@@ -675,7 +714,7 @@ function JudgeDetails({ judge, topic, t }: { judge: DrawJudgeResponse; topic: Dr
               key={id}
               label={id === topic.id ? `${label} ★` : label}
               probability={probability}
-              isChosen={id === topGuess}
+              isChosen={id === topGuessId}
             />
           ))}
         </ul>

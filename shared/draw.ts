@@ -128,6 +128,11 @@ export function findTopic(id: string): DrawTopic | undefined {
   return DRAW_TOPICS.find((topic) => topic.id === id);
 }
 
+/** 何の絵に見えるかの答えのうち、一番確率が高い選択肢（お題の ID か "other"） */
+export function topGuess(guesses: Record<string, number>): string {
+  return Object.entries(guesses).reduce((best, entry) => (entry[1] > best[1] ? entry : best), ["", -1])[0];
+}
+
 /** 時間制限（秒）。null は制限なし */
 export const TIME_LIMITS = [30, null] as const;
 export type TimeLimit = (typeof TIME_LIMITS)[number];

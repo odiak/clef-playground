@@ -1,3 +1,5 @@
+import { shareOrDownload } from "../../lib/share";
+
 const SIZE = 1024;
 
 /** SVG を PNG にして、共有シート（スマホ）かダウンロードで保存する */
@@ -24,23 +26,7 @@ export async function saveSvgAsPng(svg: SVGSVGElement, filename: string): Promis
     const blob = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("PNG の作成に失敗しました"))), "image/png"),
     );
-    const file = new File([blob], filename, { type: "image/png" });
-
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file] });
-        return;
-      } catch (error) {
-        // 共有シートを閉じただけなら何もしない
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      }
-    }
-
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    await shareOrDownload(new File([blob], filename, { type: "image/png" }));
   } finally {
     URL.revokeObjectURL(url);
   }
